@@ -9,10 +9,14 @@
 
 .section .text
     .extern pingu_kernel_main
+    .extern call_constructors
     .global loader
 
 loader:
     mov $kernel_stack, %esp; #Set stack pointer
+
+    call call_constructors
+
     push %eax
     push %ebx
     call pingu_kernel_main
