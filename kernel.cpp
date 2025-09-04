@@ -1,4 +1,5 @@
 #include "types.h"
+#include "gdt.h"
 
 void printf(int8_t* string){
     uint16_t* vga_buffer = (uint16_t*) 0xb8000;
@@ -17,7 +18,8 @@ extern "C" void call_constructors(){
 }
 
 extern "C" void pingu_kernel_main(void* multiboot_struct, uint32_t magic_number){
-    printf("Noot Noot!");
+    printf("Noot Noot!         ");
+    GlobalDescriptorTable gdt;
 
     while(1);
 
