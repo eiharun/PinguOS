@@ -16,9 +16,10 @@ and it should build and run qemu
 
 ## Verions
 
-- 0.1.0: Prints `Noot Noot` to the screen
-- 0.1.1: Fixed calling constructors for static and global objects. Added types.h
+- 0.1.3: Added ports.h, communicating with hardware, improved printf, compile into build dir
 - 0.1.2: Added global descriptor table
+- 0.1.1: Fixed calling constructors for static and global objects. Added types.h
+- 0.1.0: Prints `Noot Noot` to the screen
 
 ## Dependencies
 
