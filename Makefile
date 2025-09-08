@@ -3,7 +3,7 @@ ASPARAMS = --32
 LDPARAMS = -melf_i386
 
 BUILD_DIR := build
-objects = kernel.o loader.o gdt.o port.o
+objects = kernel.o loader.o gdt.o port.o interrupts.o
 OBJS := $(objects:%=$(BUILD_DIR)/%)
 
 $(BUILD_DIR):
