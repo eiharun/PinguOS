@@ -1,6 +1,9 @@
+#include "interrupts.h"
 #include "types.h"
 #include "gdt.h"
 #include "port.h"
+
+
 
 void printf(int8_t* string){
     static uint16_t* vga_buffer = (uint16_t*) 0xb8000;
@@ -55,7 +58,11 @@ extern "C" void pingu_kernel_main(void* multiboot_struct, uint32_t magic_number)
     printf("Piingu Piinguu!         ");
     
     GlobalDescriptorTable gdt;
+    InterruptManager interrupts(&gdt);
+    // dump_descriptor_info(&gdt);
 
+    interrupts.activate();
     while(1);
+
 
 }

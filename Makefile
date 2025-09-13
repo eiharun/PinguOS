@@ -3,20 +3,23 @@ ASPARAMS = --32
 LDPARAMS = -melf_i386
 
 BUILD_DIR := build
-objects = kernel.o loader.o gdt.o port.o interrupts.o
-OBJS := $(objects:%=$(BUILD_DIR)/%)
+objects =  loader gdt port interruptstubs interrupts kernel
+OBJS := $(objects:%=$(BUILD_DIR)/%.o)
 
-$(BUILD_DIR):
+mkdir_build:
 	mkdir -p $(BUILD_DIR)
 
-$(BUILD_DIR)/%.o:%.cpp $(BUILD_DIR)
+$(OBJS): mkdir_build
+
+$(BUILD_DIR)/%.o: %.cpp
 	gcc $(GCCPARAMS) -c -o $@ $<
 
-$(BUILD_DIR)/%.o:%.S $(BUILD_DIR)
+$(BUILD_DIR)/%.o: %.s 
 	as $(ASPARAMS) -o $@ $<
 
 $(BUILD_DIR)/pingukernel.bin: linker.ld $(OBJS) 
 	ld $(LDPARAMS) -T $< -o $@ $(OBJS)
+
 
 
 $(BUILD_DIR)/pingukernel.iso: $(BUILD_DIR)/pingukernel.bin
@@ -36,9 +39,23 @@ $(BUILD_DIR)/pingukernel.iso: $(BUILD_DIR)/pingukernel.bin
 
 run: $(BUILD_DIR)/pingukernel.iso
 # kill current vm if necesarry
-	qemu-system-x86_64 -drive format=raw,file=$(BUILD_DIR)/pingukernel.iso 
+	qemu-system-i386 -drive format=raw,file=$(BUILD_DIR)/pingukernel.iso
 
-.PHONY: clean
+
+.PHONY: debug kill build clean
+
+build: $(BUILD_DIR)/pingukernel.bin
+
+debug: $(BUILD_DIR)/pingukernel.iso
+	tmux new-session -d -s qemu_debug \
+		"qemu-system-i386 -s -S -drive format=raw,file=$(BUILD_DIR)/pingukernel.iso -monitor stdio" \; \
+		split-window -h "sleep 2; gdb -ex 'target remote :1234' -ex 'set architecture i386' -ex 'file $(BUILD_DIR)/pingukernel.bin' " \; \
+		select-pane -t 0 \; \
+		attach
+
+kill:
+	tmux kill-session -t qemu_debug 2>/dev/null || echo "No session 'qemu_debug' found"
+
 clean:
 # 	rm *.o   
 # 	rm *.bin 

@@ -3,3 +3,7 @@
 *.bin
 *.iso
 build
+
+.gdb_history
+
+self.md

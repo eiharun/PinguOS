@@ -8,21 +8,25 @@
 GlobalDescriptorTable::GlobalDescriptorTable()
 :nullSegment(0,0,0), unusedSegment(0,0,0), codeSegment(0,64*1024*1024,0x9A), dataSegment(0,64*1024*1024,0x92)
 {
-    uint32_t i[2];
-    i[0] = (uint32_t)this;
-    i[1] = sizeof(GlobalDescriptorTable) << 16;
-
-    asm volatile("lgdt (%0)": :"p" (((uint8_t *) i)+2));
+    GDTPointer gdt;
+    gdt.limit = sizeof(GlobalDescriptorTable)-1;
+    gdt.base = (uint32_t)this;
+    // uint32_t i[2];
+    // i[0] = (uint32_t)this;
+    // i[1] = sizeof(GlobalDescriptorTable) << 16;
+    // asm volatile("lgdt (%0)": :"p" (((uint8_t *) i)+2));
+    asm volatile("lgdt %0" : : "m"(gdt));
+    
 }
 
 GlobalDescriptorTable::~GlobalDescriptorTable(){}
 
 uint16_t GlobalDescriptorTable::dataSegmentSelector(){
-    return (uint8_t*)&dataSegment - (uint8_t*)this;
+    return ((uint8_t*)&dataSegment - (uint8_t*)this);
 }
 
 uint16_t GlobalDescriptorTable::codeSegmentSelector(){
-    return (uint8_t*)&codeSegment - (uint8_t*)this;
+    return ((uint8_t*)&codeSegment - (uint8_t*)this);
 }
 
 GlobalDescriptorTable::SegmentDescriptor::SegmentDescriptor(uint32_t base, uint32_t limit, uint8_t flags){

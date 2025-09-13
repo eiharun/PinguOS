@@ -3,6 +3,12 @@
 
 class GlobalDescriptorTable{
 public:
+    class GDTPointer{
+    public:
+        uint16_t limit;
+        uint32_t base;
+    }__attribute__((packed)); 
+
     class SegmentDescriptor{
     private:
         uint16_t limit_lo;
@@ -28,3 +34,4 @@ public:
     uint16_t codeSegmentSelector();
     uint16_t dataSegmentSelector();
 };
+
