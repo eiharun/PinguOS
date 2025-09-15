@@ -1,9 +1,9 @@
-#include "interrupts.h"
-#include "types.h"
-#include "gdt.h"
-#include "port.h"
-#include "keyboard.h"
-#include "mouse.h"
+#include <hardware_communication/interrupts.h>
+#include <common/types.h>
+#include <gdt.h>
+#include <hardware_communication/port.h>
+#include <drivers/keyboard.h>
+#include <drivers/mouse.h>
 
 
 void printf(int8_t* string){

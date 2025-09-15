@@ -1,7 +1,7 @@
 #pragma once
-#include "types.h"
-#include "gdt.h"
-#include "port.h"
+#include <common/types.h>
+#include <gdt.h>
+#include <hardware_communication/port.h>
 
 class InterruptManager;
 

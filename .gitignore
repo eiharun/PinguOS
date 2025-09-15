@@ -7,3 +7,5 @@ build
 .gdb_history
 
 self.md
+
+.vscode

@@ -1,26 +1,29 @@
-GCCPARAMS = -m32 -g -ffreestanding -fno-use-cxa-atexit -nostdlib -fno-builtin -fno-rtti -fno-exceptions -fno-leading-underscore -Wno-write-strings
+GCCPARAMS = -m32 -g -Iinclude -ffreestanding -fno-use-cxa-atexit -nostdlib -fno-builtin -fno-rtti -fno-exceptions -fno-leading-underscore -Wno-write-strings
 ASPARAMS = --32
 LDPARAMS = -melf_i386
 
 BUILD_DIR := build
-objects =  loader gdt port interruptstubs interrupts keyboard mouse kernel
+SRC_DIR := src
+objects =  loader gdt \
+hardware_communication/port hardware_communication/interruptstubs hardware_communication/interrupts \
+drivers/keyboard drivers/mouse kernel
 OBJS := $(objects:%=$(BUILD_DIR)/%.o)
 
-mkdir_build:
-	mkdir -p $(BUILD_DIR)
+# mkdir_build:
+# 	mkdir -p $(BUILD_DIR)
 
-$(OBJS): mkdir_build
+# $(OBJS): mkdir_build
 
-$(BUILD_DIR)/%.o: %.cpp
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
+	mkdir -p $(@D)
 	gcc $(GCCPARAMS) -c -o $@ $<
 
-$(BUILD_DIR)/%.o: %.s 
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.s 
+	mkdir -p $(@D)
 	as $(ASPARAMS) -o $@ $<
 
 $(BUILD_DIR)/pingukernel.bin: linker.ld $(OBJS) 
 	ld $(LDPARAMS) -T $< -o $@ $(OBJS)
-
-
 
 $(BUILD_DIR)/pingukernel.iso: $(BUILD_DIR)/pingukernel.bin
 	mkdir -p $(BUILD_DIR)/iso

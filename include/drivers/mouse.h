@@ -1,8 +1,8 @@
 
 #pragma once
-#include "types.h"
-#include "interrupts.h"
-#include "port.h"
+#include <common/types.h>
+#include <hardware_communication/interrupts.h>
+#include <hardware_communication/port.h>
 
 class MouseDriver: public InterruptHandler{    
 public:

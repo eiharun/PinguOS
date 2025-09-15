@@ -1,4 +1,4 @@
-#include "interrupts.h"
+#include <hardware_communication/interrupts.h>
 #include "gdt.h"
 
 void printf(int8_t* string);

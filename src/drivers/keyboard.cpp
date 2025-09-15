@@ -1,5 +1,5 @@
-#include "keyboard.h"
-#include "interrupts.h"
+#include <drivers/keyboard.h>
+#include <hardware_communication/interrupts.h>
 
 void printf(int8_t* string);
 
