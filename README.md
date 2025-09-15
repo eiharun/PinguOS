@@ -18,6 +18,7 @@ and it should build and run qemu
 
 ## Verions
 
+- 0.1.5: Mouse driver
 - 0.1.4: Keyboard driver
 - 0.1.3: Added ports.h, communicating with hardware, improved printf, compile into build dir
 - 0.1.2: Added global descriptor table

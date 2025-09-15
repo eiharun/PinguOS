@@ -127,3 +127,12 @@ private:
 // ---------------- Special Multi-Byte Keys ----------------
 // Print Screen: E0 2A E0 37 (press), E0 B7 E0 AA (release)
 // Pause/Break:  E1 1D 45 (press), E1 9D C5 (release)
+
+
+// ------------------- Key Releases ------------------------
+#define KEY_LSHIFT_RELEASE  (KEY_LSHIFT | 0x80)
+#define KEY_RSHIFT_RELEASE  (KEY_RSHIFT | 0x80)
+#define KEY_LCTRL_RELEASE   (KEY_LCTRL  | 0x80)
+#define KEY_RCTRL_RELEASE   (KEY_RCTRL  | 0x80)
+#define KEY_LALT_RELEASE    (KEY_LALT   | 0x80)
+#define KEY_RALT_RELEASE    (KEY_RALT   | 0x80)

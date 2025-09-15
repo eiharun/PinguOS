@@ -1,9 +1,9 @@
-GCCPARAMS = -m32 -g -ffreestanding -fno-use-cxa-atexit -nostdlib -fno-builtin -fno-rtti -fno-exceptions -fno-leading-underscore
+GCCPARAMS = -m32 -g -ffreestanding -fno-use-cxa-atexit -nostdlib -fno-builtin -fno-rtti -fno-exceptions -fno-leading-underscore -Wno-write-strings
 ASPARAMS = --32
 LDPARAMS = -melf_i386
 
 BUILD_DIR := build
-objects =  loader gdt port interruptstubs interrupts keyboard kernel
+objects =  loader gdt port interruptstubs interrupts keyboard mouse kernel
 OBJS := $(objects:%=$(BUILD_DIR)/%.o)
 
 mkdir_build:
@@ -39,7 +39,7 @@ $(BUILD_DIR)/pingukernel.iso: $(BUILD_DIR)/pingukernel.bin
 
 run: $(BUILD_DIR)/pingukernel.iso
 # kill current vm if necesarry
-	qemu-system-i386 -drive format=raw,file=$(BUILD_DIR)/pingukernel.iso
+	qemu-system-i386 -drive format=raw,file=$(BUILD_DIR)/pingukernel.iso 
 
 
 .PHONY: debug kill build clean

@@ -3,7 +3,7 @@
 #include "gdt.h"
 #include "port.h"
 #include "keyboard.h"
-
+#include "mouse.h"
 
 
 void printf(int8_t* string){
@@ -55,13 +55,14 @@ extern "C" void call_constructors(){
 }
 
 extern "C" void pingu_kernel_main(void* multiboot_struct, uint32_t magic_number){
-    printf("Noot Noot!         \n");
-    printf("Piingu Piinguu! ");
+    printf("Noot Noot!         ");
+    printf("Piingu Piinguu! \n");
     
     GlobalDescriptorTable gdt;
     InterruptManager interrupts(&gdt);
+    MouseDriver mouse(&interrupts);
     KeyboardDriver keyboard(&interrupts);    
-
+    
     interrupts.activate();
     while(1);
 

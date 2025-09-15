@@ -59,7 +59,8 @@ public:
     uint32_t handler(uint8_t interrupt_number, uint32_t esp); 
     
     static void ignoreInterruptRequest();
-    static void handleInterruptRequest0x00();
-    static void handleInterruptRequest0x01();
+    static void handleInterruptRequest0x00(); // PIT
+    static void handleInterruptRequest0x01(); // Keyboard
+    static void handleInterruptRequest0x0C(); // Mouse
 };
 

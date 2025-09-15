@@ -26,8 +26,7 @@ uint32_t KeyboardDriver::handle_interrupt(uint32_t esp) {
     uint16_t key = data_port.read();
     static bool shift_pressed = false;
 
-    if (key<0x80){
-        switch (key) {
+    switch (key) {
         // ---------- Control keys ----------
         case KEY_ESC:        /* handle */ break;
         case KEY_BACKSPACE:  printf("\b"); break;
@@ -154,32 +153,21 @@ uint32_t KeyboardDriver::handle_interrupt(uint32_t esp) {
         // Pause/Break   = multi-byte sequence (not a single scancode)
         case 0xFA: break;
         case 0xC5: break;
+
+        case KEY_LSHIFT_RELEASE: shift_pressed = false; break;
+        case KEY_RSHIFT_RELEASE: shift_pressed = false; break;
+        case KEY_LCTRL_RELEASE:  /* TODO: handle Ctrl release modifier */ break;
+        case KEY_RCTRL_RELEASE:  /* TODO: handle Ctrl release modifier */ break;
+        case KEY_LALT_RELEASE:   /* TODO: handle Alt release modifier */ break;
+        case KEY_RALT_RELEASE:   /* TODO: handle Alt release modifier */ break;
         default:
-            char* foo = " KEYBOARD 0x00";
-            char* hex = "0123456789ABCDEF";
-            foo[12] = hex[(key >> 4) & 0x0F];
-            foo[13] = hex[key & 0x0F];
-            printf(foo);
-        }
-    }
-    else{
-        switch (key & ~0x80) { // Tracks key releases
-        case KEY_LSHIFT: shift_pressed = false; break;
-        case KEY_RSHIFT: shift_pressed = false; break;
-        case KEY_LCTRL:  /* TODO: handle Ctrl modifier */ break;
-        case KEY_RCTRL:  /* TODO: handle Ctrl modifier */ break;
-        case KEY_LALT:   /* TODO: handle Alt modifier */ break;
-        case KEY_RALT:   /* TODO: handle Alt modifier */ break;
-        
-        case 0xFA: break;
-        case 0x45: break; case 0xC5: break;
-        // default:
-        //     char* foo = " KEYBOARD 0x00";
-        //     char* hex = "0123456789ABCDEF";
-        //     foo[12] = hex[(key >> 4) & 0x0F];
-        //     foo[13] = hex[key & 0x0F];
-        //     printf(foo);
-        }
+            if (key<0x80){
+                char* foo = " KEYBOARD 0x00";
+                char* hex = "0123456789ABCDEF";
+                foo[12] = hex[(key >> 4) & 0x0F];
+                foo[13] = hex[key & 0x0F];
+                printf(foo);
+            }
     }
 
     return esp;

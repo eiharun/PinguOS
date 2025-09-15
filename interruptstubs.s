@@ -20,8 +20,9 @@ _ZN16InterruptManager26handleInterruptRequest\num\()Ev:
     jmp int_bottom
 .endm
 
-handleInterruptRequest 0x00
-handleInterruptRequest 0x01
+handleInterruptRequest 0x00 # PIT
+handleInterruptRequest 0x01 # Keyboard
+handleInterruptRequest 0x0C # Mouse
 
 int_bottom:
     pusha
