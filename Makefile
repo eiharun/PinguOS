@@ -3,7 +3,7 @@ ASPARAMS = --32
 LDPARAMS = -melf_i386
 
 BUILD_DIR := build
-objects =  loader gdt port interruptstubs interrupts kernel
+objects =  loader gdt port interruptstubs interrupts keyboard kernel
 OBJS := $(objects:%=$(BUILD_DIR)/%.o)
 
 mkdir_build:

@@ -3,7 +3,25 @@
 
 void printf(int8_t* string);
 
+InterruptHandler::InterruptHandler(uint8_t interrupt_number, InterruptManager* interrupt_manager)
+: interrupt_number(interrupt_number), interrupt_manager(interrupt_manager)
+{
+    interrupt_manager->handlers[interrupt_number] = this;
+}
+
+InterruptHandler::~InterruptHandler(){
+    if(interrupt_manager->handlers[interrupt_number] == this){
+        interrupt_manager->handlers[interrupt_number] = 0;
+    }
+}
+
+uint32_t InterruptHandler::handle_interrupt(uint32_t esp){
+    return esp;
+}
+
 InterruptManager::GateDescriptor InterruptManager::interruptDescriptorTable[256];
+
+InterruptManager* InterruptManager::ActiveInterruptManager = 0;
 
 void InterruptManager::set_interrupt_descriptor_table_entry(
     uint8_t interrupt_number,
@@ -31,6 +49,7 @@ InterruptManager::InterruptManager(GlobalDescriptorTable* gdt)
     const uint8_t IDT_INTERRUPT_GATE = 0xE;
 
     for(uint16_t i=0; i<256; ++i){
+        handlers[i] = 0;
         set_interrupt_descriptor_table_entry(i, code_segment, &ignoreInterruptRequest, 0, IDT_INTERRUPT_GATE);
     }
 
@@ -53,10 +72,6 @@ InterruptManager::InterruptManager(GlobalDescriptorTable* gdt)
     pic_master_data.write(0x00);
     pic_slave_data.write(0x00);
 
-    // mask all IRQs (master and slave) while debugging
-   
-
-
     InterruptDescriptorTablePointer idt;
     idt.size = 256 * sizeof(GateDescriptor)-1;
     idt.base = (uint32_t)interruptDescriptorTable;
@@ -65,10 +80,48 @@ InterruptManager::InterruptManager(GlobalDescriptorTable* gdt)
 InterruptManager::~InterruptManager(){}
 
 void InterruptManager::activate(){
+    if(ActiveInterruptManager != 0){
+        ActiveInterruptManager->deactivate();
+    }
+    ActiveInterruptManager = this;
     asm("sti");
 }
 
+void InterruptManager::deactivate(){
+    if(ActiveInterruptManager == this){
+        ActiveInterruptManager = 0;
+        asm("cli");
+    }
+}
+
 uint32_t InterruptManager::handleInterrupt(uint8_t interrupt_number, uint32_t esp){
-    printf("  INTERRUPT");
+    if(ActiveInterruptManager != 0){
+        return ActiveInterruptManager->handler(interrupt_number, esp);
+    }
     return esp;
 }
+
+uint32_t InterruptManager::handler(uint8_t interrupt_number, uint32_t esp){
+    if(handlers[interrupt_number] != 0){
+        esp = handlers[interrupt_number]->handle_interrupt(esp);
+    }
+    else if(interrupt_number != 0x20){
+        char* foo = "UNHANDLED INTERRUPT 0x00";
+        char* hex = "0123456789ABCDEF";
+        foo[12] = hex[(interrupt_number >> 4) & 0x0F];
+        foo[13] = hex[interrupt_number & 0x0F];
+        printf(foo);
+    }
+    
+    // Send EOI
+    if(0x20 <= interrupt_number && interrupt_number < 0x30){
+        if(0x28 <= interrupt_number){ // slave ints
+            pic_slave_cmd.write(0x20);
+        }
+        pic_master_cmd.write(0x20);
+    }
+    
+    return esp;
+}
+
+

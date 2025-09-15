@@ -2,6 +2,7 @@
 #include "types.h"
 #include "gdt.h"
 #include "port.h"
+#include "keyboard.h"
 
 
 
@@ -55,11 +56,11 @@ extern "C" void call_constructors(){
 
 extern "C" void pingu_kernel_main(void* multiboot_struct, uint32_t magic_number){
     printf("Noot Noot!         \n");
-    printf("Piingu Piinguu!         ");
+    printf("Piingu Piinguu! ");
     
     GlobalDescriptorTable gdt;
     InterruptManager interrupts(&gdt);
-    // dump_descriptor_info(&gdt);
+    KeyboardDriver keyboard(&interrupts);    
 
     interrupts.activate();
     while(1);

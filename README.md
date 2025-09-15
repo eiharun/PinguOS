@@ -18,6 +18,7 @@ and it should build and run qemu
 
 ## Verions
 
+- 0.1.4: Keyboard driver
 - 0.1.3: Added ports.h, communicating with hardware, improved printf, compile into build dir
 - 0.1.2: Added global descriptor table
 - 0.1.1: Fixed calling constructors for static and global objects. Added types.h
@@ -27,4 +28,4 @@ and it should build and run qemu
 
 - sudo apt-get install build-essential (obvious)
 - sudo apt-get install grub-pc-bin grub-common xorriso (grub bootloader -> kernel image)
-- sudo apt-get install qemu qemu-system-x86 qemu-utils (virtualization)
+- sudo apt-get install qemu qemu-system-i386 qemu-utils (virtualization)
