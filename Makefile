@@ -4,9 +4,10 @@ LDPARAMS = -melf_i386
 
 BUILD_DIR := build
 SRC_DIR := src
-objects =  loader gdt \
-hardware_communication/port hardware_communication/interruptstubs hardware_communication/interrupts \
-drivers/keyboard drivers/mouse kernel
+objects =  	loader gdt \
+			hardware_communication/port hardware_communication/interruptstubs hardware_communication/interrupts \
+			drivers/driver drivers/keyboard drivers/mouse \
+			kernel
 OBJS := $(objects:%=$(BUILD_DIR)/%.o)
 
 # mkdir_build:

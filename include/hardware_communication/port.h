@@ -3,7 +3,7 @@
 
 class Port {
 protected:
-    uint16_t portnumber;
+    uint16_t m_portnumber;
     Port(uint16_t portnumber);
     ~Port();
 };

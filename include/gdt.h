@@ -22,10 +22,10 @@ public:
         uint32_t Limit();
     }__attribute__((packed)); // bytes aligned as above
 
-    SegmentDescriptor nullSegment;
-    SegmentDescriptor unusedSegment;
-    SegmentDescriptor codeSegment;
-    SegmentDescriptor dataSegment;
+    SegmentDescriptor m_nullSegment;
+    SegmentDescriptor m_unusedSegment;
+    SegmentDescriptor m_codeSegment;
+    SegmentDescriptor m_dataSegment;
 
     GlobalDescriptorTable();
     ~GlobalDescriptorTable();

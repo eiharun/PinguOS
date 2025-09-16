@@ -41,10 +41,10 @@ void InterruptManager::set_interrupt_descriptor_table_entry(
 }
 
 InterruptManager::InterruptManager(GlobalDescriptorTable* gdt)
-: pic_master_cmd(0x20),
-  pic_master_data(0x21),
-  pic_slave_cmd(0xA0),
-  pic_slave_data(0xA1){
+: m_pic_master_cmd(0x20),
+  m_pic_master_data(0x21),
+  m_pic_slave_cmd(0xA0),
+  m_pic_slave_data(0xA1){
     uint16_t code_segment = gdt->codeSegmentSelector();
     const uint8_t IDT_INTERRUPT_GATE = 0xE;
 
@@ -58,20 +58,20 @@ InterruptManager::InterruptManager(GlobalDescriptorTable* gdt)
     set_interrupt_descriptor_table_entry(0x2C, code_segment, &handleInterruptRequest0x0C, 0, IDT_INTERRUPT_GATE);
   
 
-    pic_master_cmd.write(0x11);
-    pic_slave_cmd.write(0x11);
+    m_pic_master_cmd.write(0x11);
+    m_pic_slave_cmd.write(0x11);
 
-    pic_master_data.write(0x20);
-    pic_slave_data.write(0x28);
+    m_pic_master_data.write(0x20);
+    m_pic_slave_data.write(0x28);
 
-    pic_master_data.write(0x04);
-    pic_slave_data.write(0x02);
+    m_pic_master_data.write(0x04);
+    m_pic_slave_data.write(0x02);
 
-    pic_master_data.write(0x01);
-    pic_slave_data.write(0x01);
+    m_pic_master_data.write(0x01);
+    m_pic_slave_data.write(0x01);
 
-    pic_master_data.write(0x00);
-    pic_slave_data.write(0x00);
+    m_pic_master_data.write(0x00);
+    m_pic_slave_data.write(0x00);
 
     InterruptDescriptorTablePointer idt;
     idt.size = 256 * sizeof(GateDescriptor)-1;
@@ -117,9 +117,9 @@ uint32_t InterruptManager::handler(uint8_t interrupt_number, uint32_t esp){
     // Send EOI
     if(0x20 <= interrupt_number && interrupt_number < 0x30){
         if(0x28 <= interrupt_number){ // slave ints
-            pic_slave_cmd.write(0x20);
+            m_pic_slave_cmd.write(0x20);
         }
-        pic_master_cmd.write(0x20);
+        m_pic_master_cmd.write(0x20);
     }
     
     return esp;

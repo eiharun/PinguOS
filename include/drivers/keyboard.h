@@ -2,19 +2,42 @@
 #include <common/types.h>
 #include <hardware_communication/interrupts.h>
 #include <hardware_communication/port.h>
+#include <drivers/driver.h>
 
-class KeyboardDriver: public InterruptHandler{    
+class KeyboardHandler{
 public:
-    KeyboardDriver(InterruptManager* interrupt_manger);
-    ~KeyboardDriver();
-    virtual uint32_t handle_interrupt(uint32_t esp) override;
-    
-private:
-    Port8 data_port;
-    Port8 cmd_port;
-    
+    KeyboardHandler();
+
+    virtual void emit_event(uint16_t key) = 0;
+    virtual void on_key_up(char key) = 0;
+    virtual void on_key_down(char key) = 0;
 };
 
+class TextualKeyboardHandler: public KeyboardHandler{
+public:
+    TextualKeyboardHandler();
+
+    void emit_event(uint16_t key) override;
+    void on_key_up(char key) override;
+    void on_key_down(char key) override;
+    void set_shift(bool state);
+private:
+    bool m_shift;
+};
+
+class KeyboardDriver: public InterruptHandler, public Driver{    
+public:
+    KeyboardDriver(InterruptManager* interrupt_manger, KeyboardHandler* event_handler);
+    ~KeyboardDriver();
+    virtual uint32_t handle_interrupt(uint32_t esp) override;
+    virtual void activate() override;
+private:
+    KeyboardHandler* m_event_handler;
+    Port8 m_data_port;
+    Port8 m_cmd_port;
+};
+
+// CONSTANTS
 #define KEYBOARD_INT 0x21
 
 // ---------------- Normal Scan Codes ----------------

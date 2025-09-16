@@ -4,7 +4,7 @@
 #include <hardware_communication/port.h>
 #include <drivers/keyboard.h>
 #include <drivers/mouse.h>
-
+#include <drivers/driver.h>
 
 void printf(int8_t* string){
     static uint16_t* vga_buffer = (uint16_t*) 0xb8000;
@@ -60,9 +60,17 @@ extern "C" void pingu_kernel_main(void* multiboot_struct, uint32_t magic_number)
     
     GlobalDescriptorTable gdt;
     InterruptManager interrupts(&gdt);
-    MouseDriver mouse(&interrupts);
-    KeyboardDriver keyboard(&interrupts);    
+    DriverManager driver_manager;
     
+    TextualKeyboardHandler handle;
+
+    MouseDriver mouse(&interrupts);
+    driver_manager.add_driver(&mouse);
+    KeyboardDriver keyboard(&interrupts, &handle);
+    driver_manager.add_driver(&keyboard);
+
+    driver_manager.activate_all();
+
     interrupts.activate();
     while(1);
 

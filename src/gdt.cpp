@@ -6,7 +6,7 @@
 #endif
 
 GlobalDescriptorTable::GlobalDescriptorTable()
-:nullSegment(0,0,0), unusedSegment(0,0,0), codeSegment(0,64*1024*1024,0x9A), dataSegment(0,64*1024*1024,0x92)
+:m_nullSegment(0,0,0), m_unusedSegment(0,0,0), m_codeSegment(0,64*1024*1024,0x9A), m_dataSegment(0,64*1024*1024,0x92)
 {
     GDTPointer gdt;
     gdt.limit = sizeof(GlobalDescriptorTable)-1;
@@ -22,11 +22,11 @@ GlobalDescriptorTable::GlobalDescriptorTable()
 GlobalDescriptorTable::~GlobalDescriptorTable(){}
 
 uint16_t GlobalDescriptorTable::dataSegmentSelector(){
-    return ((uint8_t*)&dataSegment - (uint8_t*)this);
+    return ((uint8_t*)&m_dataSegment - (uint8_t*)this);
 }
 
 uint16_t GlobalDescriptorTable::codeSegmentSelector(){
-    return ((uint8_t*)&codeSegment - (uint8_t*)this);
+    return ((uint8_t*)&m_codeSegment - (uint8_t*)this);
 }
 
 GlobalDescriptorTable::SegmentDescriptor::SegmentDescriptor(uint32_t base, uint32_t limit, uint8_t flags){
