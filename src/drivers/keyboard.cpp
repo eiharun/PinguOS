@@ -167,25 +167,19 @@ void TextualKeyboardHandler::emit_event(uint16_t key){
 }
 
 void TextualKeyboardHandler::on_key_up(char key){
-
+    // TODO: Map scancodes to US_QWERTY map to make modifiers easier to handle
+    // This will do for now though
 }
 
 void TextualKeyboardHandler::on_key_down(char key){
     char* temp = " ";
     if(m_shift == true){
-        if(key >= 'a' && key >= 'z'){
-            key = key - 'a' + 'A';
-        }
-        else{
-            switch(key){
-            case '`': key = '~'; break;
-            case '1': key = '!'; break;
-            }
-        }
+        
     }
     else{
-        temp[0] = key;
+
     }
+    temp[0] = key;
     printf(temp);
 }
 

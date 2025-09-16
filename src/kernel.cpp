@@ -62,11 +62,12 @@ extern "C" void pingu_kernel_main(void* multiboot_struct, uint32_t magic_number)
     InterruptManager interrupts(&gdt);
     DriverManager driver_manager;
     
-    TextualKeyboardHandler handle;
+    TextualKeyboardHandler keyboard_handle;
+    TextualMouseHandler mouse_handle(40,12,6);
 
-    MouseDriver mouse(&interrupts);
+    MouseDriver mouse(&interrupts, &mouse_handle);
     driver_manager.add_driver(&mouse);
-    KeyboardDriver keyboard(&interrupts, &handle);
+    KeyboardDriver keyboard(&interrupts, &keyboard_handle);
     driver_manager.add_driver(&keyboard);
 
     driver_manager.activate_all();
