@@ -3,6 +3,10 @@
 #include <gdt.h>
 #include <hardware_communication/port.h>
 
+using namespace common;
+
+namespace hardware_communication {
+
 class InterruptManager;
 
 class InterruptHandler{
@@ -102,3 +106,4 @@ public:
     static void handleException0x13();
 };
 
+}

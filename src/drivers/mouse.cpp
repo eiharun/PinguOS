@@ -1,5 +1,7 @@
 #include <drivers/mouse.h>
 
+using namespace drivers;
+
 MouseHandler::MouseHandler(){}
 
 TextualMouseHandler::TextualMouseHandler(uint32_t init_x, uint32_t init_y, uint8_t scalar)

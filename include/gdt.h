@@ -1,6 +1,8 @@
 #pragma once
 #include <common/types.h>
 
+using namespace common;
+
 class GlobalDescriptorTable{
 public:
     struct GDTPointer{

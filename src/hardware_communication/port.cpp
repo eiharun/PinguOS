@@ -1,5 +1,6 @@
 #include <hardware_communication/port.h>
 
+using namespace hardware_communication;
 
 Port::Port(uint16_t portnumber): m_portnumber(portnumber){};
 Port::~Port(){}

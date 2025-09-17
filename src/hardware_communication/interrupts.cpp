@@ -1,6 +1,8 @@
 #include <hardware_communication/interrupts.h>
 #include "gdt.h"
 
+using namespace hardware_communication;
+
 void printf(int8_t* string);
 
 InterruptHandler::InterruptHandler(uint8_t interrupt_number, InterruptManager* interrupt_manager)

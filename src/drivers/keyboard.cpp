@@ -1,6 +1,8 @@
 #include <drivers/keyboard.h>
 #include <hardware_communication/interrupts.h>
 
+using namespace drivers;
+
 void printf(int8_t* string);
 
 KeyboardHandler::KeyboardHandler(){}

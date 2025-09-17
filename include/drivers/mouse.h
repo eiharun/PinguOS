@@ -1,9 +1,13 @@
-
 #pragma once
 #include <common/types.h>
 #include <hardware_communication/interrupts.h>
 #include <hardware_communication/port.h>
 #include <drivers/driver.h>
+
+using namespace common;
+using namespace hardware_communication;
+
+namespace drivers {
 
 class MouseHandler{
 public:
@@ -47,3 +51,5 @@ private:
 };
 
 #define MOUSE_INT 0x2C
+
+}

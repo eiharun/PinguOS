@@ -6,6 +6,8 @@
 #include <drivers/mouse.h>
 #include <drivers/driver.h>
 
+using namespace drivers;
+
 void printf(int8_t* string){
     static uint16_t* vga_buffer = (uint16_t*) 0xb8000;
     static int x{}, y{}; //VGA text mode is 80 by 25 char
@@ -63,7 +65,9 @@ extern "C" void pingu_kernel_main(void* multiboot_struct, uint32_t magic_number)
     DriverManager driver_manager;
     
     TextualKeyboardHandler keyboard_handle;
-    TextualMouseHandler mouse_handle(40,12,6);
+    // 80x25 mouse resolution -> map to 1920x1080 mouse resolution
+    // 1.79999999856 *
+    TextualMouseHandler mouse_handle(40,12,4);
 
     MouseDriver mouse(&interrupts, &mouse_handle);
     driver_manager.add_driver(&mouse);

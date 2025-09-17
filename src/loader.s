@@ -7,6 +7,8 @@
     .long FLAGS
     .long CHECKSUM 
 
+.section .note.GNU-stack,"",@progbits
+
 .section .text
     .extern pingu_kernel_main
     .extern call_constructors

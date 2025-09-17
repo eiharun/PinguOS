@@ -1,5 +1,7 @@
 #include <drivers/driver.h>
 
+using namespace drivers;
+
 Driver::Driver(){}
 
 Driver::~Driver(){}

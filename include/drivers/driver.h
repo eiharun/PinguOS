@@ -1,6 +1,10 @@
 #pragma once
 #include <common/types.h>
 
+using namespace common;
+
+namespace drivers {
+
 class Driver{
 public:
     Driver();
@@ -20,3 +24,5 @@ public:
     void add_driver(Driver* driver);
     void activate_all();
 };
+
+}

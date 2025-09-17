@@ -11,7 +11,7 @@ SECTIONS
     *(.multiboot)
     *(.text*)
     *(.rodata)
-  }
+  } : text
 
   .data  :
   {
@@ -21,12 +21,18 @@ SECTIONS
     end_ctors = .;
 
     *(.data)
-  }
+  } : data
 
   .bss  :
   {
     *(.bss)
-  }
+  } : bss
 
   /DISCARD/ : { *(.fini_array*) *(.comment) }
+}
+
+PHDRS {
+  text PT_LOAD FLAGS(0x5);  /* R+X */
+  data PT_LOAD FLAGS(0x6);  /* R+W */
+  bss  PT_LOAD FLAGS(0x6);  /* R+W */
 }

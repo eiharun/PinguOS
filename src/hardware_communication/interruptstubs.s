@@ -1,21 +1,23 @@
 .set IRQ_BASE, 0x20
 
+.section .note.GNU-stack,"",@progbits
+
 .section .text
 
-.extern _ZN16InterruptManager15handleInterruptEhj # # Cant use extern C since it is a class method (C has no knowledge of classes)
-.global _ZN16InterruptManager22ignoreInterruptRequestEv
+.extern _ZN22hardware_communication16InterruptManager15handleInterruptEhj # # Cant use extern C since it is a class method (C has no knowledge of classes)
+.global _ZN22hardware_communication16InterruptManager22ignoreInterruptRequestEv
 
 
 .macro handleException num
-.global _ZN16InterruptManager16handleException\num\()Ev
-_ZN16InterruptManager16handleException\num\()Ev:
+.global _ZN22hardware_communication16InterruptManager16handleException\num\()Ev
+_ZN22hardware_communication16InterruptManager16handleException\num\()Ev:
     movb $\num, (interrupt_number)
     jmp int_bottom
 .endm
 
 .macro handleInterruptRequest num
-.global _ZN16InterruptManager26handleInterruptRequest\num\()Ev
-_ZN16InterruptManager26handleInterruptRequest\num\()Ev:
+.global _ZN22hardware_communication16InterruptManager26handleInterruptRequest\num\()Ev
+_ZN22hardware_communication16InterruptManager26handleInterruptRequest\num\()Ev:
     movb $\num + IRQ_BASE, (interrupt_number)
     jmp int_bottom
 .endm
@@ -84,7 +86,7 @@ int_bottom:
     # pushl %eax
     # movzbl interrupt_number, %eax
     # pushl %eax
-    call _ZN16InterruptManager15handleInterruptEhj
+    call _ZN22hardware_communication16InterruptManager15handleInterruptEhj
     movl %eax, %esp
     # addl $8, %esp
 
@@ -105,7 +107,7 @@ int_bottom:
     popa
     iret
 
-_ZN16InterruptManager22ignoreInterruptRequestEv:
+_ZN22hardware_communication16InterruptManager22ignoreInterruptRequestEv:
     iret 
 
 .data

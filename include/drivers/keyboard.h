@@ -4,6 +4,11 @@
 #include <hardware_communication/port.h>
 #include <drivers/driver.h>
 
+using namespace common;
+using namespace hardware_communication;
+
+namespace drivers {
+
 class KeyboardHandler{
 public:
     KeyboardHandler();
@@ -159,3 +164,5 @@ private:
 #define KEY_RCTRL_RELEASE   (KEY_RCTRL  | 0x80)
 #define KEY_LALT_RELEASE    (KEY_LALT   | 0x80)
 #define KEY_RALT_RELEASE    (KEY_RALT   | 0x80)
+
+}

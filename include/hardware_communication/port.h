@@ -1,6 +1,10 @@
 #pragma once
 #include <common/types.h>
 
+using namespace common;
+
+namespace hardware_communication {
+
 class Port {
 protected:
     uint16_t m_portnumber;
@@ -39,3 +43,5 @@ public:
     virtual void write(uint32_t data);
     uint32_t read();
 };
+
+}
