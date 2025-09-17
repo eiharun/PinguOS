@@ -5,7 +5,10 @@ LDPARAMS = -melf_i386
 BUILD_DIR := build
 SRC_DIR := src
 objects =  	loader gdt \
-			hardware_communication/port hardware_communication/interruptstubs hardware_communication/interrupts \
+			hardware_communication/port \
+			hardware_communication/interruptstubs \
+			hardware_communication/interrupts \
+			hardware_communication/pci \
 			drivers/driver drivers/keyboard drivers/mouse \
 			kernel
 OBJS := $(objects:%=$(BUILD_DIR)/%.o)
@@ -43,7 +46,8 @@ $(BUILD_DIR)/pingukernel.iso: $(BUILD_DIR)/pingukernel.bin
 
 run: $(BUILD_DIR)/pingukernel.iso
 # kill current vm if necesarry
-	qemu-system-i386 -drive format=raw,file=$(BUILD_DIR)/pingukernel.iso -usb -usbdevice tablet
+	qemu-system-i386 -drive format=raw,file=$(BUILD_DIR)/pingukernel.iso 
+
 
 
 .PHONY: debug kill build clean

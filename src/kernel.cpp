@@ -2,6 +2,7 @@
 #include <common/types.h>
 #include <gdt.h>
 #include <hardware_communication/port.h>
+#include <hardware_communication/pci.h>
 #include <drivers/keyboard.h>
 #include <drivers/mouse.h>
 #include <drivers/driver.h>
@@ -47,6 +48,14 @@ void printf(int8_t* string){
     }
 }
 
+void printf_hex(uint8_t value){
+    char* foo = "00";
+    char* hex = "0123456789ABCDEF";
+    foo[0] = hex[(value >> 4) & 0x0F];
+    foo[1] = hex[value & 0x0F];
+    printf(foo);
+}
+
 typedef void (*constructor)(); //function pointer
 extern "C" constructor start_ctors;
 extern "C" constructor end_ctors;
@@ -64,18 +73,23 @@ extern "C" void pingu_kernel_main(void* multiboot_struct, uint32_t magic_number)
     InterruptManager interrupts(&gdt);
     DriverManager driver_manager;
     
+    printf("Initializing Hardware\n");
     TextualKeyboardHandler keyboard_handle;
     // 80x25 mouse resolution -> map to 1920x1080 mouse resolution
     // 1.79999999856 *
     TextualMouseHandler mouse_handle(40,12,4);
-
+    
     MouseDriver mouse(&interrupts, &mouse_handle);
     driver_manager.add_driver(&mouse);
     KeyboardDriver keyboard(&interrupts, &keyboard_handle);
     driver_manager.add_driver(&keyboard);
-
+    
+    PCIController pci_controller;
+    pci_controller.select_drivers(&driver_manager);
+    
+    printf("Activating Drivers\n");
     driver_manager.activate_all();
-
+    printf("Activating Interrupts\n");
     interrupts.activate();
     while(1);
 
