@@ -17,7 +17,7 @@ uint32_t PCIController::read(uint8_t bus, uint8_t device, uint8_t function, uint
     uint32_t id = COMPUTE_ID(bus, device, function, register_offset);
     m_cmd_port.write(id);
     uint32_t result = m_data_port.read();
-    return result >> (8 * register_offset % 4); 
+    return result >> (register_offset & 2) * 8; 
 }
 
 void PCIController::write(uint8_t bus, uint8_t device, uint8_t function, uint8_t register_offset, uint32_t value){
@@ -53,7 +53,7 @@ void PCIController::select_drivers(DriverManager* driver_manager){
             for(int fn=0; fn < num_func; ++fn){
                 PCIDeviceDescriptor dev = get_device_descriptor(bus, device, fn);
                 if(dev.vendor_id == 0x0000 || dev.vendor_id == 0xFFFF){
-                    break;
+                    continue;
                 }
                 printf(" PCI BUS ");
                 printf_hex(bus & 0xFF);
