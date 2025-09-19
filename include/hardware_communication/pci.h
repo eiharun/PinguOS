@@ -19,16 +19,29 @@ namespace hardware_communication {
 
 #define NUM_BUS 8
 #define NUM_DEVICES 32
+#define NUM_BARS 6
 
 // PCI Device Structure OFFSETS
 #define VENDOR_ID_OFFSET 0x00
 #define DEVICE_ID_OFFSET 0x02
 #define CLASS_ID_OFFSET 0x0B
 #define SUBCLASS_ID_OFFSET 0x0A
-#define INTERFACE_ID_OFFSET 0x09
 #define REVISION_OFFSET 0x08
+#define INTERFACE_ID_OFFSET 0x09
 #define HEADER_TYPE_OFFSET 0x0E
+#define BAR_START_OFFSET 0x10
 #define INTERRUPT_OFFSET 0x3C
+
+enum class BaseAddressRegisterType{MM=0,IO=1}; // Memory Map, Input/Output
+typedef BaseAddressRegisterType BAR;
+
+class BaseAddressRegister{ // Base Address Register
+public:
+    bool prefetchable;
+    uint8_t* addr;
+    uint32_t size;
+    BaseAddressRegisterType type;
+};
 
 class PCIDeviceDescriptor{
 public:
@@ -59,8 +72,10 @@ public:
     uint32_t read(uint8_t bus, uint8_t device, uint8_t function, uint8_t register_offset);
     void write(uint8_t bus, uint8_t device, uint8_t function, uint8_t register_offset, uint32_t value);
     bool device_has_functions(uint8_t bus, uint8_t device);
-    void select_drivers(DriverManager* driver_manager);
+    void select_drivers(DriverManager* driver_manager, InterruptManager* interrupt);
     PCIDeviceDescriptor get_device_descriptor(uint8_t bus, uint8_t device, uint8_t function);
+    BaseAddressRegister get_base_address_register(uint8_t bus, uint8_t device, uint8_t function, uint8_t bar_num);
+    Driver* get_driver(PCIDeviceDescriptor dev, InterruptManager* interrupt);
 private:
     Port32 m_cmd_port;
     Port32 m_data_port;

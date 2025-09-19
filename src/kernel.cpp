@@ -85,7 +85,7 @@ extern "C" void pingu_kernel_main(void* multiboot_struct, uint32_t magic_number)
     driver_manager.add_driver(&keyboard);
     
     PCIController pci_controller;
-    pci_controller.select_drivers(&driver_manager);
+    pci_controller.select_drivers(&driver_manager, &interrupts);
     
     printf("Activating Drivers\n");
     driver_manager.activate_all();

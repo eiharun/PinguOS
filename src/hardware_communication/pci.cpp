@@ -46,7 +46,7 @@ PCIDeviceDescriptor PCIController::get_device_descriptor(uint8_t bus, uint8_t de
 void printf(int8_t* string);
 void printf_hex(uint8_t value);
 
-void PCIController::select_drivers(DriverManager* driver_manager){
+void PCIController::select_drivers(DriverManager* driver_manager, InterruptManager* interrupt){
     for(int bus=0; bus < NUM_BUS; ++bus){
         for(int device=0; device < NUM_DEVICES; ++device){
             int num_func = device_has_functions(bus, device) ? 8 : 1;
@@ -55,6 +55,21 @@ void PCIController::select_drivers(DriverManager* driver_manager){
                 if(dev.vendor_id == 0x0000 || dev.vendor_id == 0xFFFF){
                     continue;
                 }
+
+                for(int bar_num=0; bar_num < NUM_BARS; ++bar_num){
+                    BaseAddressRegister bar = get_base_address_register(bus, device, fn, bar_num);
+                    if((bar.addr!=0) && (bar.type==BAR::IO)){
+                        dev.port_base = (uint32_t)bar.addr;
+                    }
+
+                    Driver* driver = get_driver(dev, interrupt);
+                    if(driver!=0){
+                        driver_manager->add_driver(driver);
+                    }
+
+                }
+
+
                 printf(" PCI BUS ");
                 printf_hex(bus & 0xFF);
                 printf(", DEVICE ");
@@ -75,3 +90,65 @@ void PCIController::select_drivers(DriverManager* driver_manager){
 
 }
 
+BaseAddressRegister PCIController::get_base_address_register(uint8_t bus, uint8_t device, uint8_t function, uint8_t bar_num){
+    BaseAddressRegister result;
+
+    uint32_t header_type = read(bus, device, function, HEADER_TYPE_OFFSET) & 0x7F;
+    int max_bars = 6 - (4 * header_type);
+    if(bar_num >= max_bars){
+        return result;
+    }
+
+    uint32_t bar_value = read(bus, device, function, BAR_START_OFFSET + 4*bar_num);
+    result.type = (bar_value & 0x01) ? BAR::IO : BAR::MM;
+    uint32_t temp;
+
+    switch(result.type){
+        case BAR::MM:
+            result.prefetchable = (((bar_value >> 3) & 0x01) == 0x01);
+            switch((bar_value >> 1) & 0x3){
+                // TODO Add enum for cases
+                case 0: // 32bit mode
+                    break;
+                case 1: // 20bit mode
+                    break;
+                case 2: // 64bit mode
+                    break;
+            }
+            break;
+        case BAR::IO:
+            result.addr = (uint8_t*)(bar_value & ~0x3);
+            result.prefetchable = false;
+            break;
+    }
+
+    return result;
+}
+
+Driver* PCIController::get_driver(PCIDeviceDescriptor dev, InterruptManager* interrupt){
+
+    switch(dev.vendor_id){
+        case 0x1022: // AMD
+            // switch(dev.device_id){}
+            break;
+        case 0x8086: // Intel
+            switch(dev.device_id){
+                case 0x100E: // Intel 82540EM
+                    printf("Intel 82540EM ");
+                    break;
+            }
+            break;
+    }
+
+    switch(dev.class_id){
+        case 0x03: // Graphics
+            switch(dev.subclass_id){
+                case 0x00: // VGA
+                    printf("VGA ");
+                    break;
+            }
+            break;
+    }
+
+    return 0;
+}

@@ -65,7 +65,4 @@ kill:
 	tmux kill-session -t qemu_debug 2>/dev/null || echo "No session 'qemu_debug' found"
 
 clean:
-# 	rm *.o   
-# 	rm *.bin 
-# 	rm *.iso 
 	rm -r build
