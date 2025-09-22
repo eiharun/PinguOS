@@ -19,15 +19,17 @@ public:
 
 class TextualMouseHandler: public MouseHandler {
 public:
-    TextualMouseHandler(uint32_t init_x, uint32_t init_y, uint8_t scalar);
+    TextualMouseHandler(uint32_t init_x, uint32_t init_y, uint8_t sens);
 
     void on_move(int8_t x, int8_t y) override;
     uint8_t on_button(uint8_t buttons) override;
 private:
     uint16_t* m_vga_buf = (uint16_t*) 0xB8000;
-    const uint8_t m_scalar;
+    const uint8_t m_sens;
     int32_t m_x;
     int32_t m_y;
+    int32_t m_accum_x{}; // Accumulation of small movements
+    int32_t m_accum_y{};
     uint8_t m_buttons;
 };
 

@@ -5,7 +5,7 @@ using namespace drivers;
 MouseHandler::MouseHandler(){}
 
 TextualMouseHandler::TextualMouseHandler(uint32_t init_x, uint32_t init_y, uint8_t scalar)
-: m_scalar(scalar), m_x(init_x), m_y(init_y)
+: m_sens(scalar), m_x(init_x), m_y(init_y)
 {
     m_vga_buf[80*m_y+m_x] = ((m_vga_buf[80*m_y+m_x] & 0xF000) >> 4) 
                         | ((m_vga_buf[80*m_y+m_x] & 0x0F00) << 4) 
@@ -16,24 +16,37 @@ void TextualMouseHandler::on_move(int8_t x, int8_t y){
     m_vga_buf[80*m_y+m_x] = ((m_vga_buf[80*m_y+m_x] & 0xF000) >> 4) 
                         | ((m_vga_buf[80*m_y+m_x] & 0x0F00) << 4) 
                         | (m_vga_buf[80*m_y+m_x] & 0x00FF); // Invert color
-    const uint8_t x_scalar = m_scalar;
-    const uint8_t y_scalar = m_scalar;
+    const uint8_t x_scalar = m_sens;
+    const uint8_t y_scalar = 2*m_sens;
+    
     // Set x
-    m_x += x/x_scalar;
-    if( m_x < 0 ){
-        m_x=0;
-    }
-    if(m_x >= 80){
-        m_x=79;
-    }
+    m_accum_x += x;
     // Set y
-    m_y -= y/y_scalar;
-    if( m_y < 0 ){
-        m_y=0;
+    m_accum_y += y;
+    
+    //handle bulk movements
+    while(m_accum_x >= x_scalar){
+        m_x++;
+        m_accum_x -= x_scalar;
     }
-    if(m_y >= 25){
-        m_y=24;
+    while(m_accum_x <= -x_scalar){
+        m_x--;
+        m_accum_x += x_scalar;
     }
+
+    while(m_accum_y >= y_scalar){
+        m_y--;
+        m_accum_y -= y_scalar;
+    }
+    while(m_accum_y <= -y_scalar){
+        m_y++;
+        m_accum_y += y_scalar;
+    }
+
+    if( m_x < 0 )   m_x=0;
+    if(m_x >= 80)   m_x=79;
+    if( m_y < 0 )   m_y=0;
+    if(m_y >= 25)   m_y=24;
 
     m_vga_buf[80*m_y+m_x] = ((m_vga_buf[80*m_y+m_x] & 0xF000) >> 4) 
                     | ((m_vga_buf[80*m_y+m_x] & 0x0F00) << 4) 
