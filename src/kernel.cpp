@@ -5,6 +5,7 @@
 #include <hardware_communication/pci.h>
 #include <drivers/keyboard.h>
 #include <drivers/mouse.h>
+#include <drivers/vga.h>
 #include <drivers/driver.h>
 
 using namespace drivers;
@@ -86,12 +87,19 @@ extern "C" void pingu_kernel_main(void* multiboot_struct, uint32_t magic_number)
     
     PCIController pci_controller;
     pci_controller.select_drivers(&driver_manager, &interrupts);
+    VideoGraphicsArray vga;
     
     printf("Activating Drivers\n");
     driver_manager.activate_all();
     printf("Activating Interrupts\n");
     interrupts.activate();
+
+    vga.set_mode(320, 200, 8);
+    for(int y=0; y<200; ++y){
+        for(int x=0; x<320; ++x){
+            vga.put_pixel(x, y, 0, 0, 0xA8);
+        }
+    }
+
     while(1);
-
-
 }

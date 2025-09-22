@@ -10,6 +10,7 @@ objects =  	loader gdt \
 			hardware_communication/interrupts \
 			hardware_communication/pci \
 			drivers/driver drivers/keyboard drivers/mouse \
+			drivers/vga \
 			kernel
 OBJS := $(objects:%=$(BUILD_DIR)/%.o)
 
