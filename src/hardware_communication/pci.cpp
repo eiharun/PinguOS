@@ -70,11 +70,11 @@ void PCIController::select_drivers(DriverManager* driver_manager, InterruptManag
                 }
 
 
-                printf(" PCI BUS ");
+                printf(" BUS ");
                 printf_hex(bus & 0xFF);
-                printf(", DEVICE ");
+                printf(", DEV ");
                 printf_hex(device & 0xFF);
-                printf(", FUNCTION ");
+                printf(", FN ");
                 printf_hex(fn & 0xFF);
 
                 printf(", VENDOR ID ");
@@ -83,6 +83,15 @@ void PCIController::select_drivers(DriverManager* driver_manager, InterruptManag
                 printf(", DEVICE ID ");
                 printf_hex((dev.device_id & 0xFF00) >> 8);
                 printf_hex(dev.device_id & 0xFF);
+                printf("\n");
+                
+                printf(", CLASS ID ");
+                printf_hex((dev.class_id & 0xFF00 ) >> 8);
+                printf_hex(dev.class_id & 0xFF);
+                printf(", SUBCLASS ID ");
+                printf_hex((dev.subclass_id & 0xFF00 ) >> 8);
+                printf_hex(dev.subclass_id & 0xFF);
+
                 printf("\n");
             }
         }
@@ -106,13 +115,12 @@ BaseAddressRegister PCIController::get_base_address_register(uint8_t bus, uint8_
     switch(result.type){
         case BAR::MM:
             result.prefetchable = (((bar_value >> 3) & 0x01) == 0x01);
-            switch((bar_value >> 1) & 0x3){
-                // TODO Add enum for cases
-                case 0: // 32bit mode
+            switch((MemoryMapMode)((bar_value >> 1) & 0x3)){
+                case MMMode::B32: // 32bit mode
                     break;
-                case 1: // 20bit mode
+                case MMMode::B20: // 20bit mode
                     break;
-                case 2: // 64bit mode
+                case MMMode::B64: // 64bit mode
                     break;
             }
             break;
@@ -126,7 +134,7 @@ BaseAddressRegister PCIController::get_base_address_register(uint8_t bus, uint8_
 }
 
 Driver* PCIController::get_driver(PCIDeviceDescriptor dev, InterruptManager* interrupt){
-
+    // TODO Add enum for cases (not yet, since a better option may be to have a lookup table for drivers)
     switch(dev.vendor_id){
         case 0x1022: // AMD
             // switch(dev.device_id){}
@@ -141,6 +149,13 @@ Driver* PCIController::get_driver(PCIDeviceDescriptor dev, InterruptManager* int
     }
 
     switch(dev.class_id){
+        case 0x00: // Pre PCI 2.0
+            switch(dev.subclass_id){
+                case 0x00: break;
+                case 0x01: // VGA
+                    printf("Pre PCI 2.0 VGA ");
+                    break;
+            }
         case 0x03: // Graphics
             switch(dev.subclass_id){
                 case 0x00: // VGA

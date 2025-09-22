@@ -32,6 +32,11 @@ namespace hardware_communication {
 #define BAR_START_OFFSET 0x10
 #define INTERRUPT_OFFSET 0x3C
 
+
+
+enum class MemoryMapMode {B32=0, B20, B64};
+typedef MemoryMapMode MMMode;
+
 enum class BaseAddressRegisterType{MM=0,IO=1}; // Memory Map, Input/Output
 typedef BaseAddressRegisterType BAR;
 
