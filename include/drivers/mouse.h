@@ -14,7 +14,9 @@ public:
     MouseHandler();
 
     virtual void on_move(int8_t x, int8_t y) = 0;
-    virtual uint8_t on_button(uint8_t buttons) = 0;
+    virtual uint8_t on_button(uint8_t buttons);
+    virtual void on_up(uint8_t button);
+    virtual void on_down(uint8_t button);
 };
 
 class TextualMouseHandler: public MouseHandler {
@@ -23,6 +25,8 @@ public:
 
     void on_move(int8_t x, int8_t y) override;
     uint8_t on_button(uint8_t buttons) override;
+    void on_up(uint8_t button) override;
+    void on_down(uint8_t button) override;
 private:
     uint16_t* m_vga_buf = (uint16_t*) 0xB8000;
     const uint8_t m_sens;

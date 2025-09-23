@@ -13,9 +13,9 @@ class KeyboardHandler{
 public:
     KeyboardHandler();
 
-    virtual void emit_event(uint16_t key) = 0;
-    virtual void on_key_up(char key) = 0;
-    virtual void on_key_down(char key) = 0;
+    virtual void emit_event(uint16_t key);
+    virtual void on_key_up(char key);
+    virtual void on_key_down(char key);
 };
 
 class TextualKeyboardHandler: public KeyboardHandler{

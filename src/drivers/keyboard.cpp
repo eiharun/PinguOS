@@ -6,6 +6,10 @@ using namespace drivers;
 void printf(int8_t* string);
 
 KeyboardHandler::KeyboardHandler(){}
+void KeyboardHandler::emit_event(uint16_t key){};
+void KeyboardHandler::on_key_up(char key){};
+void KeyboardHandler::on_key_down(char key){};
+
 
 TextualKeyboardHandler::TextualKeyboardHandler()
 :m_shift(false)

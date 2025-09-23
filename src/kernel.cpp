@@ -7,8 +7,11 @@
 #include <drivers/mouse.h>
 #include <drivers/vga.h>
 #include <drivers/driver.h>
+#include <gui/desktop.h>
+#include <gui/window.h>
 
 using namespace drivers;
+using namespace gui;
 
 void printf(int8_t* string){
     static uint16_t* vga_buffer = (uint16_t*) 0xb8000;
@@ -72,34 +75,40 @@ extern "C" void pingu_kernel_main(void* multiboot_struct, uint32_t magic_number)
     
     GlobalDescriptorTable gdt;
     InterruptManager interrupts(&gdt);
+    
+    rgb color{0x00,0x00,0xA8};
+    Desktop desktop(320,200, color);
+    
     DriverManager driver_manager;
     
     printf("Initializing Hardware\n");
-    TextualKeyboardHandler keyboard_handle;
-    // 80x25 mouse resolution -> map to 1920x1080 mouse resolution
-    // 1.79999999856 *
-    TextualMouseHandler mouse_handle(40,12,4);
+
+    // TextualKeyboardHandler keyboard_handle;
+    // TextualMouseHandler mouse_handle(40,12,9);
     
-    MouseDriver mouse(&interrupts, &mouse_handle);
+    MouseDriver mouse(&interrupts, &desktop);
     driver_manager.add_driver(&mouse);
-    KeyboardDriver keyboard(&interrupts, &keyboard_handle);
+    KeyboardDriver keyboard(&interrupts, &desktop);
     driver_manager.add_driver(&keyboard);
     
     PCIController pci_controller;
     pci_controller.select_drivers(&driver_manager, &interrupts);
+    
     VideoGraphicsArray vga;
     
     printf("Activating Drivers\n");
     driver_manager.activate_all();
     printf("Activating Interrupts\n");
-    interrupts.activate();
+    for(int j=0; j<1000000000; j++){}
+    
+    Window window1(&desktop, 10, 10, 20, 20, rgb{0xA8,0x00,0x00});
+    desktop.add_child(&window1);
+    Window window2(&desktop, 40, 15, 25, 25, rgb{0x00,0xA8,0x00});
+    desktop.add_child(&window2);
 
     vga.set_mode(320, 200, 8);
-    for(int y=0; y<200; ++y){
-        for(int x=0; x<320; ++x){
-            vga.put_pixel(x, y, 0, 0, 0xA8);
-        }
+    interrupts.activate();
+    while(1){
+        desktop.draw(&vga);
     }
-
-    while(1);
 }

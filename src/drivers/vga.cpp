@@ -1,3 +1,4 @@
+#include "common/types.h"
 #include <drivers/vga.h>
 
 using namespace drivers;
@@ -95,17 +96,39 @@ uint8_t* VideoGraphicsArray::get_frame_buffer_segment(){
     }
 }
 
-void VideoGraphicsArray::put_pixel(uint32_t x, uint32_t y, uint8_t color_index){
+void VideoGraphicsArray::put_pixel(int32_t x, int32_t y, uint8_t color_index){
+    if(x<0 ||  320 <= x || y<0 || 200 <= y){
+        return;
+    }
     uint8_t* pixel_addr = get_frame_buffer_segment() + 320*y + x;
     *pixel_addr = color_index;
 }
 
-uint8_t VideoGraphicsArray::get_color_index(uint8_t r, uint8_t g, uint8_t b){
-    if(r == 0x00 && g == 0x00 & b == 0xA8){
-        return 0x01;
+uint8_t VideoGraphicsArray::get_color_index(rgb color){
+    uint32_t color_int = (color.r << 16) | (color.g << 8) | color.b;
+    // First byte is b, second byte is g, third byte is r
+    switch(color_int){
+        case 0x000000: return 0x00; // Black
+        case 0x0000A8: return 0x01; // Blue
+        case 0x00A800: return 0x02; // Green
+        case 0xA80000: return 0x04; // Red
+        case 0xFFFFFF: return 0x3F; // White
+        default: return 0x00;
     }
+    // if(r == 0x00 && g == 0x00 & b == 0xA8){
+    //     return 0x01;
+    // }
 }
 
-void VideoGraphicsArray::put_pixel(uint32_t x, uint32_t y, uint8_t r, uint8_t g, uint8_t b){
-    put_pixel(x,y, get_color_index(r, g, b));
+void VideoGraphicsArray::put_pixel(int32_t x, int32_t y, rgb color){
+    put_pixel(x,y, get_color_index(color));
+}
+
+void VideoGraphicsArray::fill_rectangle(int32_t x, int32_t y, uint32_t w, uint32_t h, rgb color){
+    for(int Y=y; Y<y+h; ++Y){
+        for(int X=x; X<x+w; ++X){
+            // for(int j=0; j<100000; j++);
+            put_pixel(X, Y, color);
+        }
+    }
 }
