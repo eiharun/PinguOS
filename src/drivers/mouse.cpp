@@ -38,11 +38,11 @@ void TextualMouseHandler::on_move(int8_t x, int8_t y){
     }
 
     while(m_accum_y >= y_scalar){
-        m_y--;
+        m_y++;
         m_accum_y -= y_scalar;
     }
     while(m_accum_y <= -y_scalar){
-        m_y++;
+        m_y--;
         m_accum_y += y_scalar;
     }
 
