@@ -9,9 +9,26 @@
 #include <drivers/driver.h>
 #include <gui/desktop.h>
 #include <gui/window.h>
+#include <multitask.h>
+
+// #define GRAPHICS_MODE
 
 using namespace drivers;
 using namespace gui;
+using namespace multitasking;
+
+void printf(int8_t* string);
+void taskA(){
+    while(true){
+        printf("A");
+    }
+}
+void taskB(){
+    while(true){
+        printf("B");
+    }
+}
+
 
 void printf(int8_t* string){
     static uint16_t* vga_buffer = (uint16_t*) 0xb8000;
@@ -74,21 +91,38 @@ extern "C" void pingu_kernel_main(void* multiboot_struct, uint32_t magic_number)
     printf("Piingu Piinguu! \n");
     
     GlobalDescriptorTable gdt;
-    InterruptManager interrupts(&gdt);
+
+    TaskManager task_manager;
+    Task task1(&gdt, taskA);
+    Task task2(&gdt, taskB);
+    task_manager.add_task(&task1);
+    task_manager.add_task(&task2);
+
+    InterruptManager interrupts(&gdt, &task_manager);
     
-    rgb color{0x00,0x00,0xA8};
-    Desktop desktop(320,200, color);
-    
+    #ifdef GRAPHICS_MODE
+        rgb color{0x00,0x00,0xA8};
+        Desktop desktop(320,200, color);
+    #endif
+
     DriverManager driver_manager;
     
     printf("Initializing Hardware\n");
 
-    // TextualKeyboardHandler keyboard_handle;
-    // TextualMouseHandler mouse_handle(40,12,9);
-    
-    MouseDriver mouse(&interrupts, &desktop);
+    #ifndef GRAPHICS_MODE
+        TextualKeyboardHandler keyboard_handle;
+        TextualMouseHandler mouse_handle(40,12,9);
+    #endif
+
+    #ifdef GRAPHICS_MODE
+        MouseDriver mouse(&interrupts, &desktop);
+        KeyboardDriver keyboard(&interrupts, &desktop);
+    #else
+        MouseDriver mouse(&interrupts, &mouse_handle);
+        KeyboardDriver keyboard(&interrupts, &keyboard_handle);
+    #endif
+
     driver_manager.add_driver(&mouse);
-    KeyboardDriver keyboard(&interrupts, &desktop);
     driver_manager.add_driver(&keyboard);
     
     PCIController pci_controller;
@@ -99,16 +133,20 @@ extern "C" void pingu_kernel_main(void* multiboot_struct, uint32_t magic_number)
     printf("Activating Drivers\n");
     driver_manager.activate_all();
     printf("Activating Interrupts\n");
-    for(int j=0; j<1000000000; j++){}
-    
+
+    #ifdef GRAPHICS_MODE
     Window window1(&desktop, 10, 10, 20, 20, rgb{0xA8,0x00,0x00});
     desktop.add_child(&window1);
     Window window2(&desktop, 40, 15, 25, 25, rgb{0x00,0xA8,0x00});
     desktop.add_child(&window2);
 
     vga.set_mode(320, 200, 8);
+    #endif
+
     interrupts.activate();
     while(1){
-        desktop.draw(&vga);
+        #ifdef GRAPHICS_MODE
+            desktop.draw(&vga);
+        #endif
     }
 }

@@ -2,6 +2,7 @@
 #include <common/types.h>
 #include <gdt.h>
 #include <hardware_communication/port.h>
+#include <multitask.h>
 
 using namespace common;
 
@@ -18,14 +19,15 @@ protected:
     ~InterruptHandler();
 public:
     virtual uint32_t handle_interrupt(uint32_t esp);
-};
 
+};
 class InterruptManager {
 friend class InterruptHandler;
 protected:
     static InterruptManager* ActiveInterruptManager;
     InterruptHandler* handlers[256];
-    
+    multitasking::TaskManager* m_task_manager;
+
     struct GateDescriptor{
         uint16_t handler_addr_lo;
         uint16_t gdt_code_segment_selector;
@@ -55,7 +57,7 @@ protected:
     Port8_Slow m_pic_slave_data;
 
 public:
-    InterruptManager(GlobalDescriptorTable* gdt);
+    InterruptManager(GlobalDescriptorTable* gdt, multitasking::TaskManager* task_manager);
     ~InterruptManager();
     void activate();
     void deactivate();
@@ -64,7 +66,7 @@ public:
     
     static void ignoreInterruptRequest();
 
-    static void handleInterruptRequest0x00(); // PIT
+    static void handleInterruptRequest0x00(); // PIT (Timer)
     static void handleInterruptRequest0x01(); // Keyboard
     static void handleInterruptRequest0x02();
     static void handleInterruptRequest0x03();

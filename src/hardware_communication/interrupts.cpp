@@ -1,5 +1,6 @@
 #include <hardware_communication/interrupts.h>
 #include "gdt.h"
+#include "multitask.h"
 
 using namespace hardware_communication;
 
@@ -42,8 +43,9 @@ void InterruptManager::set_interrupt_descriptor_table_entry(
 
 }
 
-InterruptManager::InterruptManager(GlobalDescriptorTable* gdt)
-: m_pic_master_cmd(0x20),
+InterruptManager::InterruptManager(GlobalDescriptorTable* gdt, multitasking::TaskManager* task_manager)
+: m_task_manager(task_manager),
+  m_pic_master_cmd(0x20),
   m_pic_master_data(0x21),
   m_pic_slave_cmd(0xA0),
   m_pic_slave_data(0xA1){
@@ -114,6 +116,10 @@ uint32_t InterruptManager::handler(uint8_t interrupt_number, uint32_t esp){
         foo[12] = hex[(interrupt_number >> 4) & 0x0F];
         foo[13] = hex[interrupt_number & 0x0F];
         printf(foo);
+    }
+
+    if(interrupt_number == 0x20){
+        esp = (uint32_t)m_task_manager->scheduler((multitasking::CPUState*)esp);
     }
     
     // Send EOI

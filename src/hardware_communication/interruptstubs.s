@@ -19,6 +19,7 @@ _ZN22hardware_communication16InterruptManager16handleException\num\()Ev:
 .global _ZN22hardware_communication16InterruptManager26handleInterruptRequest\num\()Ev
 _ZN22hardware_communication16InterruptManager26handleInterruptRequest\num\()Ev:
     movb $\num + IRQ_BASE, (interrupt_number)
+    pushl $0
     jmp int_bottom
 .endm
 
@@ -64,20 +65,20 @@ handleInterruptRequest 0x31
 handleInterruptRequest 0x80
 
 int_bottom:
-    pusha
-    pushl %ds
-    pushl %es
-    pushl %fs
-    pushl %gs
+    # pusha
+    # pushl %ds
+    # pushl %es
+    # pushl %fs
+    # pushl %gs
 
-    # pushl %ebp
-    # pushl %edi
-    # pushl %esi
+    pushl %ebp
+    pushl %edi
+    pushl %esi
 
-    # pushl %edx
-    # pushl %ecx
-    # pushl %ebx
-    # pushl %eax
+    pushl %edx
+    pushl %ecx
+    pushl %ebx
+    pushl %eax
 
     pushl %esp
     push (interrupt_number)
@@ -90,21 +91,22 @@ int_bottom:
     movl %eax, %esp
     # addl $8, %esp
 
-    # popl %eax
-    # popl %ebx
-    # popl %ecx
-    # popl %edx
+    popl %eax
+    popl %ebx
+    popl %ecx
+    popl %edx
 
-    # popl %esi
-    # popl %edi
-    # popl %ebp
-    # add $4, %esp
+    popl %esi
+    popl %edi
+    popl %ebp
+    add $4, %esp
 
-    popl %gs
-    popl %fs
-    popl %es
-    popl %ds
-    popa
+    # popl %gs
+    # popl %fs
+    # popl %es
+    # popl %ds
+    # popa
+
     iret
 
 _ZN22hardware_communication16InterruptManager22ignoreInterruptRequestEv:
