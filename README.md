@@ -18,6 +18,8 @@ and it should build and run qemu
 
 ## Verions
 
+- 0.1.8: Multitasking (RR Scheduling)
+- 0.1.7: Basic VGA GUI Framework
 - 0.1.6: PCI Controller
 - 0.1.5: Mouse driver
 - 0.1.4: Keyboard driver
