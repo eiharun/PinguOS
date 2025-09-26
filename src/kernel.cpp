@@ -10,6 +10,7 @@
 #include <gui/desktop.h>
 #include <gui/window.h>
 #include <multitask.h>
+#include <memory_management.h>
 
 // #define GRAPHICS_MODE
 
@@ -86,17 +87,35 @@ extern "C" void call_constructors(){
     }
 }
 
-extern "C" void pingu_kernel_main(void* multiboot_struct, uint32_t magic_number){
+extern "C" void pingu_kernel_main(const void* multiboot_struct, uint32_t magic_number){
     printf("Noot Noot!         ");
     printf("Piingu Piinguu! \n");
     
     GlobalDescriptorTable gdt;
 
+    uint32_t* mem_upper = (uint32_t*)(((size_t)multiboot_struct) + 8);
+    size_t heap = 10*1024*1024; // 10MB
+    memory_management::MemoryManager memory_manager(heap, (*mem_upper)*1024 - heap - 10*1024);
+
+    printf("heap: 0x");
+    printf_hex((heap >> 24) & 0xFF);
+    printf_hex((heap >> 16) & 0xFF);
+    printf_hex((heap >> 8) & 0xFF);
+    printf_hex((heap) & 0xFF);
+
+    uint32_t* allocated = (uint32_t*)memory_manager.malloc(1024);
+    printf("\nallocated: 0x");
+    printf_hex(((uint32_t)allocated >> 24) & 0xFF);
+    printf_hex(((uint32_t)allocated >> 16) & 0xFF);
+    printf_hex(((uint32_t)allocated >> 8) & 0xFF);
+    printf_hex(((uint32_t)allocated) & 0xFF);
+    printf("\n");
+
     TaskManager task_manager;
-    Task task1(&gdt, taskA);
-    Task task2(&gdt, taskB);
-    task_manager.add_task(&task1);
-    task_manager.add_task(&task2);
+    // Task task1(&gdt, taskA);
+    // Task task2(&gdt, taskB);
+    // task_manager.add_task(&task1);
+    // task_manager.add_task(&task2);
 
     InterruptManager interrupts(&gdt, &task_manager);
     

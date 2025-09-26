@@ -5,6 +5,7 @@ LDPARAMS = -melf_i386
 BUILD_DIR := build
 SRC_DIR := src
 objects =  	loader gdt \
+			memory_management \
 			hardware_communication/port \
 			hardware_communication/interruptstubs \
 			hardware_communication/interrupts \
