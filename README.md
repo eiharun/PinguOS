@@ -18,6 +18,7 @@ and it should build and run qemu
 
 ## Verions
 
+- 0.1.9: Heap
 - 0.1.8: Multitasking (RR Scheduling)
 - 0.1.7: Basic VGA GUI Framework
 - 0.1.6: PCI Controller
