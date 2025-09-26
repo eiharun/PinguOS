@@ -85,14 +85,14 @@ void PCIController::select_drivers(DriverManager* driver_manager, InterruptManag
                 printf_hex(dev.device_id & 0xFF);
                 printf("\n");
                 
-                printf(", CLASS ID ");
-                printf_hex((dev.class_id & 0xFF00 ) >> 8);
-                printf_hex(dev.class_id & 0xFF);
-                printf(", SUBCLASS ID ");
-                printf_hex((dev.subclass_id & 0xFF00 ) >> 8);
-                printf_hex(dev.subclass_id & 0xFF);
+                // printf(", CLASS ID ");
+                // printf_hex((dev.class_id & 0xFF00 ) >> 8);
+                // printf_hex(dev.class_id & 0xFF);
+                // printf(", SUBCLASS ID ");
+                // printf_hex((dev.subclass_id & 0xFF00 ) >> 8);
+                // printf_hex(dev.subclass_id & 0xFF);
 
-                printf("\n");
+                // printf("\n");
             }
         }
     }
@@ -107,23 +107,57 @@ BaseAddressRegister PCIController::get_base_address_register(uint8_t bus, uint8_
     if(bar_num >= max_bars){
         return result;
     }
-
-    uint32_t bar_value = read(bus, device, function, BAR_START_OFFSET + 4*bar_num);
+    const uint32_t bar_offset = BAR_START_OFFSET + 4 * bar_num;
+    uint32_t bar_value = read(bus, device, function, bar_offset);
     result.type = (bar_value & 0x01) ? BAR::IO : BAR::MM;
-    uint32_t temp;
-
+    
     switch(result.type){
-        case BAR::MM:
+        case BAR::MM:{
+            write(bus, device, function, bar_offset, 0xFFFFFFFF);
+            uint32_t size_mask = read(bus, device, function, bar_offset);
+            write(bus, device, function, bar_offset, bar_value);
+
             result.prefetchable = (((bar_value >> 3) & 0x01) == 0x01);
-            switch((MemoryMapMode)((bar_value >> 1) & 0x3)){
+            MMMode mode = (MemoryMapMode)((bar_value >> 1) & 0x3); 
+            switch(mode){
+                case MMMode::B64:{ // 64bit mode
+                    // printf("64-bit BAR size detected\n");
+                    const uint32_t bar_hi_offset = bar_offset + 4;
+                    // Read the Hi 32-bits of the 64-bit BAR
+                    uint32_t bar_hi_addr = read(bus, device, function, bar_hi_offset);
+                    if(bar_hi_addr != 0){
+                        // Means address > 4gb, which is not possible on 32-bit system (without PAE)
+                        printf("Warning: 64-bit BAR >4GB, skipping...\n");
+                        result.addr = 0;
+                        result.size = 0;
+                    }
+                    else{
+                        // Address < 4gb, safe on 32-bit
+                        result.addr = (uint8_t*)(bar_value & ~0x0F);
+
+                        write(bus, device, function, bar_hi_offset, 0xFFFFFFFF);
+                        uint32_t size_mask_high = read(bus, device, function, bar_hi_offset);
+                        write(bus, device, function, bar_hi_offset, bar_hi_addr);
+
+                        if(size_mask_high != 0xFFFFFFFF){
+                            // Size can potentially be greater than 4gb
+                            printf("Warning: 64-bit BAR size may exceed 4GB; using low approx on 32-bit.\n");
+                        }
+                        result.size = (~(size_mask & ~0x0F) + 1);
+                    }
+
+                    break;
+                }
                 case MMMode::B32: // 32bit mode
-                    break;
+                    // printf(" 32-bit BAR ");
                 case MMMode::B20: // 20bit mode
-                    break;
-                case MMMode::B64: // 64bit mode
+                    // printf(" 20-bit BAR ");
+                    result.addr = (uint8_t*)(bar_value & ~0x0F);
+                    result.size = (~(size_mask & ~0x0F) + 1);
                     break;
             }
             break;
+        }
         case BAR::IO:
             result.addr = (uint8_t*)(bar_value & ~0x3);
             result.prefetchable = false;
@@ -142,7 +176,7 @@ Driver* PCIController::get_driver(PCIDeviceDescriptor dev, InterruptManager* int
         case 0x8086: // Intel
             switch(dev.device_id){
                 case 0x100E: // Intel 82540EM
-                    printf("Intel 82540EM ");
+                    // printf("Intel 82540EM ");
                     break;
             }
             break;
@@ -153,13 +187,13 @@ Driver* PCIController::get_driver(PCIDeviceDescriptor dev, InterruptManager* int
             switch(dev.subclass_id){
                 case 0x00: break;
                 case 0x01: // VGA
-                    printf("Pre PCI 2.0 VGA ");
+                    // printf("Pre PCI 2.0 VGA ");
                     break;
             }
         case 0x03: // Graphics
             switch(dev.subclass_id){
                 case 0x00: // VGA
-                    printf("VGA ");
+                    // printf("VGA ");
                     break;
             }
             break;

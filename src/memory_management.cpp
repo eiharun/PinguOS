@@ -77,3 +77,35 @@ void MemoryManager::free(void* ptr){
         }
     }
 }
+
+void* operator new(size_t size){
+    if(MemoryManager::active_memory_manager == 0){
+        return 0;
+    }
+    return MemoryManager::active_memory_manager->malloc(size);
+}
+void* operator new[](size_t size){
+    if(MemoryManager::active_memory_manager == 0){
+        return 0;
+    }
+    return MemoryManager::active_memory_manager->malloc(size);
+}
+void* operator new(size_t size, void* ptr){
+   return ptr;
+}
+void* operator new[](size_t size, void* ptr){
+    return ptr;
+}
+
+void operator delete(void* ptr){
+    if(MemoryManager::active_memory_manager != 0){
+        MemoryManager::active_memory_manager->free(ptr);
+    }
+}
+
+void operator delete[](void* ptr){
+    if(MemoryManager::active_memory_manager != 0){
+        MemoryManager::active_memory_manager->free(ptr);
+    }
+}
+
