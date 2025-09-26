@@ -3,7 +3,7 @@
 using namespace hardware_communication;
 
 PCIDeviceDescriptor::PCIDeviceDescriptor(uint8_t bus, uint8_t device, uint8_t function)
-:bus(bus), device(device), function(function)
+:bus(bus), device(device), function(function), port_base(0), memory_base(0), memory_size(0)
 {}
 
 PCIController::PCIController()
@@ -58,16 +58,23 @@ void PCIController::select_drivers(DriverManager* driver_manager, InterruptManag
 
                 for(int bar_num=0; bar_num < NUM_BARS; ++bar_num){
                     BaseAddressRegister bar = get_base_address_register(bus, device, fn, bar_num);
-                    if((bar.addr!=0) && (bar.type==BAR::IO)){
-                        dev.port_base = (uint32_t)bar.addr;
-                    }
-
-                    Driver* driver = get_driver(dev, interrupt);
-                    if(driver!=0){
-                        driver_manager->add_driver(driver);
+                    if((bar.addr!=0) && (bar.size!=0)){
+                        if(bar.type==BAR::IO){
+                            dev.port_base = (uint32_t)bar.addr;
+                        }
+                        else if(bar.type==BAR::MM && dev.memory_base==0){
+                            dev.memory_base = (uint32_t)bar.addr;
+                            dev.memory_size = bar.size;
+                        }
                     }
 
                 }
+
+                Driver* driver = get_driver(dev, interrupt);
+                if(driver!=0){
+                    driver_manager->add_driver(driver);
+                }
+
 
 
                 printf(" BUS ");
@@ -101,6 +108,9 @@ void PCIController::select_drivers(DriverManager* driver_manager, InterruptManag
 
 BaseAddressRegister PCIController::get_base_address_register(uint8_t bus, uint8_t device, uint8_t function, uint8_t bar_num){
     BaseAddressRegister result;
+    result.addr = 0;
+    result.size = 0;
+    result.prefetchable = false;
 
     uint32_t header_type = read(bus, device, function, HEADER_TYPE_OFFSET) & 0x7F;
     int max_bars = 6 - (4 * header_type);
@@ -176,7 +186,19 @@ Driver* PCIController::get_driver(PCIDeviceDescriptor dev, InterruptManager* int
         case 0x8086: // Intel
             switch(dev.device_id){
                 case 0x100E: // Intel 82540EM
-                    // printf("Intel 82540EM ");
+                    // printf("")
+                    printf("Intel 82540EM");
+                    printf(" - Memory Base: 0x");
+                    printf_hex((dev.memory_base >> 24) & 0xFF);
+                    printf_hex((dev.memory_base >> 16) & 0xFF);
+                    printf_hex((dev.memory_base >> 8) & 0xFF);
+                    printf_hex(dev.memory_base & 0xFF);
+                    printf(", Size: 0x");
+                    printf_hex((dev.memory_size >> 24) & 0xFF);
+                    printf_hex((dev.memory_size >> 16) & 0xFF);
+                    printf_hex((dev.memory_size >> 8) & 0xFF);
+                    printf_hex(dev.memory_size & 0xFF);
+                    printf("\n");
                     break;
             }
             break;
@@ -187,13 +209,14 @@ Driver* PCIController::get_driver(PCIDeviceDescriptor dev, InterruptManager* int
             switch(dev.subclass_id){
                 case 0x00: break;
                 case 0x01: // VGA
-                    // printf("Pre PCI 2.0 VGA ");
+                    printf("Pre PCI 2.0 VGA: ");
                     break;
             }
+            break;
         case 0x03: // Graphics
             switch(dev.subclass_id){
                 case 0x00: // VGA
-                    // printf("VGA ");
+                    printf("VGA: ");
                     break;
             }
             break;

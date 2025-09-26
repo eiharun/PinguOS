@@ -51,7 +51,11 @@ public:
 class PCIDeviceDescriptor{
 public:
     uint32_t port_base;
+
     uint32_t interrupt;
+    
+    uint32_t memory_base;
+    uint32_t memory_size;
 
     uint8_t bus;
     uint8_t device;
