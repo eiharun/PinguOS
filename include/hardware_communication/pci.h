@@ -3,6 +3,7 @@
 #include <hardware_communication/port.h>
 #include <hardware_communication/interrupts.h>
 #include <drivers/driver.h>
+#include <memory_management.h>
 
 using namespace common;
 using namespace drivers;
@@ -22,17 +23,17 @@ namespace hardware_communication {
 #define NUM_BARS 6
 
 // PCI Device Structure OFFSETS
-#define VENDOR_ID_OFFSET 0x00
-#define DEVICE_ID_OFFSET 0x02
-#define CLASS_ID_OFFSET 0x0B
-#define SUBCLASS_ID_OFFSET 0x0A
-#define REVISION_OFFSET 0x08
+#define VENDOR_ID_OFFSET    0x00
+#define DEVICE_ID_OFFSET    0x02
+#define COMMAND_OFFSET      0x04
+#define STATUS_OFFSET       0x06
+#define REVISION_OFFSET     0x08
 #define INTERFACE_ID_OFFSET 0x09
-#define HEADER_TYPE_OFFSET 0x0E
-#define BAR_START_OFFSET 0x10
-#define INTERRUPT_OFFSET 0x3C
-
-
+#define SUBCLASS_ID_OFFSET  0x0A
+#define CLASS_ID_OFFSET     0x0B
+#define HEADER_TYPE_OFFSET  0x0E
+#define BAR_START_OFFSET    0x10
+#define INTERRUPT_OFFSET    0x3C
 
 enum class MemoryMapMode {B32=0, B20, B64};
 typedef MemoryMapMode MMMode;
@@ -50,6 +51,7 @@ public:
 
 class PCIDeviceDescriptor{
 public:
+    BaseAddressRegisterType type;
     uint32_t port_base;
 
     uint32_t interrupt;
@@ -63,6 +65,9 @@ public:
 
     uint16_t vendor_id;
     uint16_t device_id;
+
+    uint16_t status;
+    uint16_t command;
 
     uint8_t class_id;
     uint8_t subclass_id;

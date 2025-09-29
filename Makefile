@@ -12,6 +12,7 @@ objects =  	loader gdt \
 			hardware_communication/pci \
 			drivers/driver drivers/keyboard drivers/mouse \
 			drivers/vga \
+			drivers/intel_82540em \
 			gui/widget gui/desktop gui/window \
 			multitask \
 			kernel

@@ -1,4 +1,7 @@
+#include "memory_management.h"
 #include <hardware_communication/pci.h>
+#include <drivers/intel_82540em.h>
+#include <common/macro.h>
 
 using namespace hardware_communication;
 
@@ -38,13 +41,16 @@ PCIDeviceDescriptor PCIController::get_device_descriptor(uint8_t bus, uint8_t de
     result.class_id = read(bus, device, function, CLASS_ID_OFFSET);
     result.subclass_id = read(bus, device, function, SUBCLASS_ID_OFFSET);
     result.interface_id = read(bus, device, function, INTERFACE_ID_OFFSET);
+    result.status = read(bus, device, function, STATUS_OFFSET);
+    result.command = read(bus, device, function, COMMAND_OFFSET);
     result.revision = read(bus, device, function, REVISION_OFFSET);
     result.interrupt = read(bus, device, function, INTERRUPT_OFFSET);
     return result;
 }
 
-void printf(int8_t* string);
-void printf_hex(uint8_t value);
+void printf(int8_t*);
+void printf_hex(uint8_t);
+void printf_hex32(uint32_t);
 
 void PCIController::select_drivers(DriverManager* driver_manager, InterruptManager* interrupt){
     for(int bus=0; bus < NUM_BUS; ++bus){
@@ -60,9 +66,11 @@ void PCIController::select_drivers(DriverManager* driver_manager, InterruptManag
                     BaseAddressRegister bar = get_base_address_register(bus, device, fn, bar_num);
                     if((bar.addr!=0) && (bar.size!=0)){
                         if(bar.type==BAR::IO){
+                            dev.type = BAR::IO;
                             dev.port_base = (uint32_t)bar.addr;
                         }
                         else if(bar.type==BAR::MM && dev.memory_base==0){
+                            dev.type = BAR::MM;
                             dev.memory_base = (uint32_t)bar.addr;
                             dev.memory_size = bar.size;
                         }
@@ -179,6 +187,7 @@ BaseAddressRegister PCIController::get_base_address_register(uint8_t bus, uint8_
 
 Driver* PCIController::get_driver(PCIDeviceDescriptor dev, InterruptManager* interrupt){
     // TODO Add enum for cases (not yet, since a better option may be to have a lookup table for drivers)
+    Driver* driver = 0;
     switch(dev.vendor_id){
         case 0x1022: // AMD
             // switch(dev.device_id){}
@@ -189,16 +198,31 @@ Driver* PCIController::get_driver(PCIDeviceDescriptor dev, InterruptManager* int
                     // printf("")
                     printf("Intel 82540EM");
                     printf(" - Memory Base: 0x");
-                    printf_hex((dev.memory_base >> 24) & 0xFF);
-                    printf_hex((dev.memory_base >> 16) & 0xFF);
-                    printf_hex((dev.memory_base >> 8) & 0xFF);
-                    printf_hex(dev.memory_base & 0xFF);
+                    printf_hex32(dev.memory_base);
                     printf(", Size: 0x");
-                    printf_hex((dev.memory_size >> 24) & 0xFF);
-                    printf_hex((dev.memory_size >> 16) & 0xFF);
-                    printf_hex((dev.memory_size >> 8) & 0xFF);
-                    printf_hex(dev.memory_size & 0xFF);
+                    printf_hex32(dev.memory_size);
                     printf("\n");
+                    // SET bit 2 in command register to 1 to enable bus mastering (allows DMA to function normally)
+                    if(!(dev.command & 0x06)){
+                        write(dev.bus, dev.device, dev.function, COMMAND_OFFSET, dev.command | 0x06);
+                    }
+
+                    // uint32_t status = READ_REG(dev.memory_base + INTEL_82540_EM_STATUS_OFFSET);
+                    // printf_hex32(status);
+                    // if(( status & (1<<1) )){ // read 2nd bit of status reg
+                    //     printf(" Error: TBI present\n"); // Make sure TBI is not present since the device does not support it
+                    // }
+                    // else{
+                    // }
+
+                    driver = (Intel_82540EM*)memory_management::MemoryManager::active_memory_manager->malloc(sizeof(Intel_82540EM));
+                    if(driver != 0){
+                        new (driver) Intel_82540EM(&dev,interrupt);
+                    }
+                    else{
+                        printf(" Could not allocate memory\n");
+                    }
+                    return driver;
                     break;
             }
             break;

@@ -6,6 +6,8 @@
 
 using namespace common;
 
+#define INTERRUPTS_BASE 0x20
+
 namespace hardware_communication {
 
 class InterruptManager;

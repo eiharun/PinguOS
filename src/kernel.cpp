@@ -78,6 +78,18 @@ void printf_hex(uint8_t value){
     printf(foo);
 }
 
+void printf_hex16(uint16_t value){
+    printf_hex((value >> 8) & 0xFF);
+    printf_hex( value & 0xFF);
+}
+
+void printf_hex32(uint32_t value){
+    printf_hex((value >> 24) & 0xFF);
+    printf_hex((value >> 16) & 0xFF);
+    printf_hex((value >> 8) & 0xFF);
+    printf_hex( value & 0xFF);
+}
+
 typedef void (*constructor)(); //function pointer
 extern "C" constructor start_ctors;
 extern "C" constructor end_ctors;
