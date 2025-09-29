@@ -12,6 +12,9 @@ namespace drivers {
 #define INTEL_82540_EM_STATUS_OFFSET 0x08
 #define INTEL_82540_EM_EECD_OFFSET 0x10
 #define INTEL_82540_EM_EERD_OFFSET 0x14
+#define INTEL_82540_EM_CTRL_EXT_OFFSET 0x18
+#define INTEL_82540_EM_RAL_OFFSET 0x5400
+#define INTEL_82540_EM_RAH_OFFSET 0x5404
 
 class Intel_82540EM: public drivers::Driver, hardware_communication::InterruptHandler{
 public:

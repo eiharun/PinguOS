@@ -51,7 +51,7 @@ $(BUILD_DIR)/pingukernel.iso: $(BUILD_DIR)/pingukernel.bin
 
 run: $(BUILD_DIR)/pingukernel.iso
 # kill current vm if necesarry
-	qemu-system-i386 -drive format=raw,file=$(BUILD_DIR)/pingukernel.iso 
+	qemu-system-i386 -drive format=raw,file=$(BUILD_DIR)/pingukernel.iso -trace e1000*
 
 
 
