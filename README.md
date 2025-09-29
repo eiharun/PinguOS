@@ -14,7 +14,7 @@ Clone the repo, install all [dependencies](#dependencies), and run
 
 and it should build and run qemu
 
-![nootnootqemu](/ScreenShots/nootnoot.gif)
+![nootnootqemu](/ScreenShots/v0.1.9.gif)
 
 ## Verions
 
