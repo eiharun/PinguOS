@@ -32,14 +32,27 @@ public:
     int reset() override;
 private:
     void get_mac_addr(bool v);
-    void init();
+    bool init();
     uint16_t read_eeprom(uint8_t addr);
-    void write_phy(uint8_t reg, uint16_t& data);
+    bool write_phy(uint8_t reg, uint16_t data);
     uint32_t read_phy(uint8_t reg);
 
     PCIDeviceDescriptor* m_dev;
     uint32_t m_reg_base;
     uint8_t m_mac_addr[6];
+
+    struct RX_Descriptor{
+        uint64_t* buf; // TODO check 32bit
+        uint16_t len;
+        uint16_t checksum;
+        uint16_t err_status;
+        uint16_t special;
+    }__attribute__((packed));
+
+    struct TX_Descriptor{
+        uint64_t* buf; // TODO check 32bit
+        
+    }__attribute__((packed));
 };
 
 }

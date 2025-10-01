@@ -1,7 +1,6 @@
 #include <drivers/intel_82540em.h>
 #include <memory_management.h>
 #include <common/macro.h>
-#include <random>
 
 void printf(char*);
 void printf_hex32(uint32_t);
@@ -71,7 +70,7 @@ int Intel_82540EM::reset(){
     return reset;
 }
 
-void Intel_82540EM::init(){
+bool Intel_82540EM::init(){
     /* CTRL.ASDE = 1
      * CTRL.SLU = 1
      * CTRL.FRCSPD = 0
@@ -80,14 +79,36 @@ void Intel_82540EM::init(){
     // Initialize PHY with ANA enabled
     // PHY Addr 001b
     // Set PHY ANA and PHY CTRL to enable ANA
-    write_phy(PHY_CTRL_REG, /*TODO*/);
-    write_phy(PHY_ANA_REG, /*TODO*/);
-    reset();
+    if(!write_phy(PHY_CTRL_REG, ((1<<9) | (1<<12) | (1<<15)))){
+        printf("Write failed\n");
+    }
+    if(!write_phy(PHY_ANA_REG, 0x0DE1)){
+        printf("Write failed\n");
+    }
     // Poll PHY STATUS for completion
-    uint32_t status = read_phy(PHY_STATUS_REG);
+    bool good_status{false};
+    uint32_t status{};
+    uint32_t mac_status = READ_REG(m_reg_base + INTEL_82540_EM_STATUS_OFFSET);
+
+    
+    for(int _=0; _<10000; ++_){
+        status = read_phy(PHY_STATUS_REG);
+        if(status & (1<<5)){
+            // Link status & Auto-negotiation completion
+            // Would normally also check link-up here too (PHY or MAC status)(but QEMU doesn't seem to set the bit)
+            good_status=true;
+            break;
+        }
+    }
+    if(!good_status){
+        printf("Auto-negotiation failed\n"); // 0x41E0 
+        printf_hex32(status);
+    }
+    
+    return good_status;
 }
 
-void Intel_82540EM::write_phy(uint8_t reg, uint16_t& data){
+bool Intel_82540EM::write_phy(uint8_t reg, uint16_t data){
     RESET_REG(m_reg_base + INTEL_82540_EM_MDI_CTRL_OFFSET, (1<<28)); //Clear Ready bit
     SET_REG(m_reg_base + INTEL_82540_EM_MDI_CTRL_OFFSET, data | (reg<<16) | (1<<21)/*PHY Addr*/ | (1<<26)/*WRITE OP*/);
     // Poll for ready bit (28) = 1 
@@ -101,6 +122,7 @@ void Intel_82540EM::write_phy(uint8_t reg, uint16_t& data){
     if(!ready){
         printf("Write phy timed out\n");
     }
+    return (READ_REG(m_reg_base + INTEL_82540_EM_MDI_CTRL_OFFSET) >> 30) & 0x1 ? true : false;
 }
 
 uint32_t Intel_82540EM::read_phy(uint8_t reg){
