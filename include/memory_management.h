@@ -10,6 +10,7 @@ struct MemoryNode{
     MemoryNode* prev;
     bool allocated;
     size_t size;
+    uint8_t offset;
 };
 
 class MemoryManager{
@@ -20,7 +21,7 @@ public:
     MemoryManager(uint32_t start, size_t size);
     ~MemoryManager();
 
-    void* malloc(size_t size);
+    void* malloc(size_t size, size_t alignment=0);
     void free(void* ptr);
 };
 

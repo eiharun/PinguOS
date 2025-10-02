@@ -27,7 +27,10 @@ MemoryManager::~MemoryManager(){
 }
 
 /* Not a very efficient approach, but it works for now */
-void* MemoryManager::malloc(size_t size){
+void* MemoryManager::malloc(size_t size, size_t alignment /*=0*/){
+    if(alignment == 0 || alignment == 1) {
+        alignment = 1; // treat "no alignment" as byte-aligned
+    }
     MemoryNode* result = 0;
     for(MemoryNode* chunk=m_first; (chunk != 0 && result == 0); chunk = chunk->next){
         if(size < chunk->size && !chunk->allocated){
@@ -37,27 +40,39 @@ void* MemoryManager::malloc(size_t size){
     if(result == 0){
         return 0;
     }
-    if(result->size >= size + sizeof(MemoryNode) + 1){
-        MemoryNode* temp = (MemoryNode*)((size_t)result + sizeof(MemoryNode) + size);
+
+    uint32_t raw_addr = (uint32_t)result + sizeof(MemoryNode);
+
+    // round up to alignment boundary
+    uint32_t aligned_addr = (raw_addr + (alignment - 1)) & ~(alignment - 1);
+
+    // padding between raw and aligned
+    uint8_t padding = (uint8_t)(aligned_addr - raw_addr);
+
+    if(result->size >= size + padding + sizeof(MemoryNode) + 1){
+        MemoryNode* temp = (MemoryNode*)(aligned_addr + size);
         temp->allocated = false;
-        temp->size = result->size - size - sizeof(MemoryNode); 
+        temp->size = result->size - size - padding - sizeof(MemoryNode); 
         temp->prev = result;
         temp->next = result->next; // Temp->next is whatever was result->next previously
         if(temp->next != 0){
             temp->next->prev = temp; // (temp)/result->next->prev should be temp
         }
         
-        result->size = size;
+        result->size = size + padding;
         result->next = temp;
 
     }
     result->allocated = true;
-    
-    return (void*)(((uint32_t)result) + sizeof(MemoryNode));
+    result->offset = padding;
+    return (void*)aligned_addr;
 }
 
 void MemoryManager::free(void* ptr){
+    if(ptr == 0) return;
+
     MemoryNode* to_be_freed = (MemoryNode*)((uint32_t)ptr - sizeof(MemoryNode));
+    to_be_freed = (MemoryNode*)((uint32_t)to_be_freed - to_be_freed->offset);
     to_be_freed->allocated = false;
     // Attempt to merge prev
     if(to_be_freed->prev !=0 && to_be_freed->prev->allocated == false){

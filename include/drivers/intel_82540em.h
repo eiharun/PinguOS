@@ -22,6 +22,9 @@ namespace drivers {
 #define PHY_STATUS_REG 1
 #define PHY_ANA_REG 4
 
+// Ring Buf Info
+#define RX_RING_SIZE 256
+#define TX_RING_SIZE 256
 
 class Intel_82540EM: public drivers::Driver, hardware_communication::InterruptHandler{
 public:
@@ -37,22 +40,34 @@ private:
     bool write_phy(uint8_t reg, uint16_t data);
     uint32_t read_phy(uint8_t reg);
 
+    void rx_setup();
+    void tx_setup();
+
     PCIDeviceDescriptor* m_dev;
     uint32_t m_reg_base;
     uint8_t m_mac_addr[6];
 
     struct RX_Descriptor{
-        uint64_t* buf; // TODO check 32bit
+        uint32_t buf_addr_lo; 
+        uint32_t buf_addr_hi; 
         uint16_t len;
         uint16_t checksum;
         uint16_t err_status;
         uint16_t special;
     }__attribute__((packed));
-
+    
     struct TX_Descriptor{
-        uint64_t* buf; // TODO check 32bit
-        
+        uint32_t buf_addr_lo; 
+        uint32_t buf_addr_hi; 
+        uint16_t len;
+        uint16_t cmd_cso;
+        uint8_t status;
+        uint8_t checksum;
+        uint16_t special;
     }__attribute__((packed));
+
+    RX_Descriptor* m_rx_ring;
+    TX_Descriptor* m_tx_ring;
 };
 
 }

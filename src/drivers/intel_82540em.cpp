@@ -2,6 +2,8 @@
 #include <memory_management.h>
 #include <common/macro.h>
 
+using namespace memory_management;
+
 void printf(char*);
 void printf_hex32(uint32_t);
 void printf_hex16(uint16_t);
@@ -26,10 +28,12 @@ Intel_82540EM::Intel_82540EM(PCIDeviceDescriptor* dev, InterruptManager* interru
         printf("Reset bit timeout\n");
     }
     init();
+    rx_setup();
+    tx_setup();
 }
 
 Intel_82540EM::~Intel_82540EM(){
-    memory_management::MemoryManager::active_memory_manager->free(this);
+    MemoryManager::active_memory_manager->free(this);
 }
 
 void Intel_82540EM::get_mac_addr(bool v){
@@ -106,6 +110,43 @@ bool Intel_82540EM::init(){
     }
     
     return good_status;
+}
+
+void Intel_82540EM::rx_setup(){
+    m_rx_ring = (RX_Descriptor*)MemoryManager::active_memory_manager->malloc(RX_RING_SIZE * sizeof(RX_Descriptor), 16);
+    if(!m_rx_ring) printf("RX ring alloc failed\n");
+
+    for(int i=0; i<RX_RING_SIZE; ++i){
+        void* buffer = MemoryManager::active_memory_manager->malloc(2048);
+        if(!buffer) printf("RX Buffer alloc failed\n");
+        m_rx_ring[i].buf_addr_lo = (uint32_t)buffer;
+        m_rx_ring[i].buf_addr_hi = 0;
+        m_rx_ring[i].len = 0;
+        m_rx_ring[i].err_status = 0;
+        m_rx_ring[i].checksum = 0;
+        m_rx_ring[i].special = 0;
+    }
+    /* RX Ring setup complete */
+    // TODO Set registers
+}
+
+void Intel_82540EM::tx_setup(){
+    m_tx_ring = (TX_Descriptor*)MemoryManager::active_memory_manager->malloc(TX_RING_SIZE * sizeof(TX_Descriptor), 16);
+    if(!m_tx_ring) printf("TX ring alloc failed\n");
+
+    for(int i=0; i<RX_RING_SIZE; ++i){
+        void* buffer = MemoryManager::active_memory_manager->malloc(2048);
+        if(!buffer) printf("TX Buffer alloc failed\n");
+        m_tx_ring[i].buf_addr_lo = (uint32_t)buffer;
+        m_tx_ring[i].buf_addr_hi = 0;
+        m_tx_ring[i].len = 0;
+        m_tx_ring[i].status = 0;
+        m_tx_ring[i].cmd_cso = 0;
+        m_tx_ring[i].checksum = 0;
+        m_tx_ring[i].special = 0;
+    }
+    /* TX Ring setup complete */
+    // TODO Set registers
 }
 
 bool Intel_82540EM::write_phy(uint8_t reg, uint16_t data){
