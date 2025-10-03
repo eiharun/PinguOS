@@ -114,11 +114,17 @@ bool Intel_82540EM::init(){
 
 void Intel_82540EM::rx_setup(){
     m_rx_ring = (RX_Descriptor*)MemoryManager::active_memory_manager->malloc(RX_RING_SIZE * sizeof(RX_Descriptor), 16);
-    if(!m_rx_ring) printf("RX ring alloc failed\n");
+    if(!m_rx_ring){
+        printf("RX ring alloc failed\n");
+        return;
+    }
 
     for(int i=0; i<RX_RING_SIZE; ++i){
         void* buffer = MemoryManager::active_memory_manager->malloc(2048);
-        if(!buffer) printf("RX Buffer alloc failed\n");
+        if(!buffer){
+            printf("RX Buffer alloc failed\n");
+            return;
+        }
         m_rx_ring[i].buf_addr_lo = (uint32_t)buffer;
         m_rx_ring[i].buf_addr_hi = 0;
         m_rx_ring[i].len = 0;
@@ -128,15 +134,41 @@ void Intel_82540EM::rx_setup(){
     }
     /* RX Ring setup complete */
     // TODO Set registers
+    /*
+        Set RDBAL RDBAH
+        Set RDH and RDT registers with buffer head and tail(one descriptor beyond last valid descriptor)
+        RCTL.EN = 1 (After recieve descriptor ring is initialized and software is ready to process packets)
+        RCTL.LPE = 0 
+        RCTL.LBM = 00b
+        RCTL.BAM = 1
+        RCTL.BSIZE = 00b [2048]
+    */
+    //RDBAL RDBAH   
+    WRITE_REG(INTEL_82540_EM_RDBAL_OFFSET, (uint32_t)m_rx_ring);
+    WRITE_REG(INTEL_82540_EM_RDBAH_OFFSET, 0);
+    //SET RDH and RDT and RDLEN
+    WRITE_REG(INTEL_82540_EM_RDLEN_OFFSET, RX_RING_SIZE * sizeof(RX_Descriptor));
+    WRITE_REG(INTEL_82540_EM_RDH_OFFSET, 0); // First Descriptor
+    WRITE_REG(INTEL_82540_EM_RDT_OFFSET, RX_RING_SIZE-1); // Last Descriptor
+
+    RESET_REG(INTEL_82540_RCTL_OFFSET, (1<<5) | (2<<6) | (2<<16));
+    SET_REG(INTEL_82540_RCTL_OFFSET, (1<1) | (1<<15));
+    printf("RX Setup ");
 }
 
 void Intel_82540EM::tx_setup(){
     m_tx_ring = (TX_Descriptor*)MemoryManager::active_memory_manager->malloc(TX_RING_SIZE * sizeof(TX_Descriptor), 16);
-    if(!m_tx_ring) printf("TX ring alloc failed\n");
+    if(!m_tx_ring){
+        printf("TX ring alloc failed\n"); 
+        return;
+    }
 
     for(int i=0; i<RX_RING_SIZE; ++i){
         void* buffer = MemoryManager::active_memory_manager->malloc(2048);
-        if(!buffer) printf("TX Buffer alloc failed\n");
+        if(!buffer){
+            printf("TX Buffer alloc failed\n");
+            return;
+        }
         m_tx_ring[i].buf_addr_lo = (uint32_t)buffer;
         m_tx_ring[i].buf_addr_hi = 0;
         m_tx_ring[i].len = 0;
@@ -147,6 +179,22 @@ void Intel_82540EM::tx_setup(){
     }
     /* TX Ring setup complete */
     // TODO Set registers
+    /*
+        TDBAL/TDBAH to trasmit descriptor base addr
+        Set TDH and TDT 0
+        TDLEN = sizeof(descriptor_ring) * TX_RING_SIZE
+        TCTL.EN = 1
+        TCTL.PSP = 1
+    */
+    // Set TDBAL/H/LEN
+    WRITE_REG(INTEL_82540_EM_TBAL_OFFSET, (uint32_t)m_tx_ring);
+    WRITE_REG(INTEL_82540_EM_TBAH_OFFSET, 0);
+    WRITE_REG(INTEL_82540_EM_TLEN_OFFSET, TX_RING_SIZE * sizeof(TX_Descriptor));
+    // TDH & TDT
+    WRITE_REG(INTEL_82540_EM_TDH_OFFSET, 0);
+    WRITE_REG(INTEL_82540_EM_TDT_OFFSET, 0);
+    SET_REG(INTEL_82540_TCTL_OFFSET, (1<<1) | (1<<3));
+    printf("TX Setup ");
 }
 
 bool Intel_82540EM::write_phy(uint8_t reg, uint16_t data){
