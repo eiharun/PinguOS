@@ -177,7 +177,7 @@ extern "C" void pingu_kernel_main(const void* multiboot_struct, uint32_t magic_n
     #endif
 
     interrupts.activate();
-
+    for(int i = 0; i<100000000; ++i){}
     uint8_t data[5] = {'A', 'B', 'C', 'D', 'E'};
     Intel_82540EM* eth0 = (Intel_82540EM*)(driver_manager.m_drivers[2]);
     eth0->send_packet(data, 5);

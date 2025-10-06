@@ -21,6 +21,7 @@ namespace drivers {
 #define INTEL_82540_EM_IMC_OFFSET 0xD8
 #define INTEL_82540_RCTL_OFFSET 0x0100
 #define INTEL_82540_TCTL_OFFSET 0x0400
+#define INTEL_82540_TIPG_OFFSET 0x0404
 #define INTEL_82540_EM_RDBAL_OFFSET 0x2800
 #define INTEL_82540_EM_RDBAH_OFFSET 0x2804
 #define INTEL_82540_EM_RDLEN_OFFSET 0x2806
@@ -54,7 +55,7 @@ public:
     void activate() override;
     int reset() override;
 private:
-    void get_mac_addr(bool v);
+    void get_mac_addr(bool v=true);
     bool init();
     uint16_t read_eeprom(uint8_t addr);
     bool write_phy(uint8_t reg, uint16_t data);
@@ -64,6 +65,7 @@ private:
     void tx_setup();
     
     void enable_interrupts();
+    int enable_bus_mastering();
     
     PCIDeviceDescriptor* m_dev;
     uint32_t m_reg_base;
@@ -82,7 +84,8 @@ private:
         uint32_t buf_addr_lo; 
         uint32_t buf_addr_hi; 
         uint16_t len;
-        uint16_t cmd_cso;
+        uint8_t cso;
+        uint8_t cmd;
         uint8_t status;
         uint8_t checksum;
         uint16_t special;
@@ -90,6 +93,9 @@ private:
 
     RX_Descriptor* m_rx_ring;
     TX_Descriptor* m_tx_ring;
+
+    Port32 m_pci_addr_port;
+    Port32 m_pci_data_port;
 };
 
 }

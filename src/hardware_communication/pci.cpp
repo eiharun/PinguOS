@@ -201,6 +201,8 @@ Driver* PCIController::get_driver(PCIDeviceDescriptor dev, InterruptManager* int
                     printf_hex32(dev.memory_base);
                     printf(", Size: 0x");
                     printf_hex32(dev.memory_size);
+                    printf(", Interrupt: 0x");
+                    printf_hex32(dev.interrupt);
                     printf("\n");
                     // SET bit 2 in command register to 1 to enable bus mastering (allows DMA to function normally)
                     if(!(dev.command & 0x06)){

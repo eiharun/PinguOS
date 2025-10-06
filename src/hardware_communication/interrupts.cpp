@@ -60,6 +60,8 @@ InterruptManager::InterruptManager(GlobalDescriptorTable* gdt, multitasking::Tas
     set_interrupt_descriptor_table_entry(0x20, code_segment, &handleInterruptRequest0x00, 0, IDT_INTERRUPT_GATE);
     set_interrupt_descriptor_table_entry(0x21, code_segment, &handleInterruptRequest0x01, 0, IDT_INTERRUPT_GATE);
     set_interrupt_descriptor_table_entry(0x2C, code_segment, &handleInterruptRequest0x0C, 0, IDT_INTERRUPT_GATE);
+    
+    set_interrupt_descriptor_table_entry(0x2B, code_segment, &handleInterruptRequest0x0B, 0, IDT_INTERRUPT_GATE);
   
 
     m_pic_master_cmd.write(0x11);
