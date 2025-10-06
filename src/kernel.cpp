@@ -11,6 +11,8 @@
 #include <gui/window.h>
 #include <multitask.h>
 #include <memory_management.h>
+#include <common/macro.h>
+#include <drivers/intel_82540em.h>
 
 // #define GRAPHICS_MODE
 
@@ -175,6 +177,10 @@ extern "C" void pingu_kernel_main(const void* multiboot_struct, uint32_t magic_n
     #endif
 
     interrupts.activate();
+
+    uint8_t data[5] = {'A', 'B', 'C', 'D', 'E'};
+    Intel_82540EM* eth0 = (Intel_82540EM*)(driver_manager.m_drivers[2]);
+    eth0->send_packet(data, 5);
     while(1){
         #ifdef GRAPHICS_MODE
             desktop.draw(&vga);

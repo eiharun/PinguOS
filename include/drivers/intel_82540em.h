@@ -14,6 +14,11 @@ namespace drivers {
 #define INTEL_82540_EM_EERD_OFFSET 0x14
 #define INTEL_82540_EM_CTRL_EXT_OFFSET 0x18
 #define INTEL_82540_EM_MDI_CTRL_OFFSET 0x20
+#define INTEL_82540_EM_ICR_OFFSET 0xC0
+#define INTEL_82540_EM_ITR_OFFSET 0xC4
+#define INTEL_82540_EM_ICS_OFFSET 0xC8
+#define INTEL_82540_EM_IMS_OFFSET 0xD0
+#define INTEL_82540_EM_IMC_OFFSET 0xD8
 #define INTEL_82540_RCTL_OFFSET 0x0100
 #define INTEL_82540_TCTL_OFFSET 0x0400
 #define INTEL_82540_EM_RDBAL_OFFSET 0x2800
@@ -44,6 +49,8 @@ public:
     Intel_82540EM(PCIDeviceDescriptor* dev, InterruptManager* interrupt);
     ~Intel_82540EM();
 
+    void send_packet(uint8_t* data, uint16_t size);
+    uint32_t handle_interrupt(uint32_t esp) override;
     void activate() override;
     int reset() override;
 private:
@@ -52,10 +59,12 @@ private:
     uint16_t read_eeprom(uint8_t addr);
     bool write_phy(uint8_t reg, uint16_t data);
     uint32_t read_phy(uint8_t reg);
-
+    
     void rx_setup();
     void tx_setup();
-
+    
+    void enable_interrupts();
+    
     PCIDeviceDescriptor* m_dev;
     uint32_t m_reg_base;
     uint8_t m_mac_addr[6];

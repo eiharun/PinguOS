@@ -1,3 +1,4 @@
+#include "common/types.h"
 #include <drivers/intel_82540em.h>
 #include <memory_management.h>
 #include <common/macro.h>
@@ -30,10 +31,34 @@ Intel_82540EM::Intel_82540EM(PCIDeviceDescriptor* dev, InterruptManager* interru
     init();
     rx_setup();
     tx_setup();
+
 }
 
 Intel_82540EM::~Intel_82540EM(){
     MemoryManager::active_memory_manager->free(this);
+}
+
+void Intel_82540EM::send_packet(uint8_t* data, uint16_t size){
+    uint32_t tdt = READ_REG(m_reg_base + INTEL_82540_EM_TDT_OFFSET); 
+    TX_Descriptor* desc = &m_tx_ring[tdt];
+
+    if (!(desc->status & 0x1)) {
+        printf("TX ring full!\n");
+        return;
+    }
+
+    uint8_t* tx_buf = (uint8_t*)(desc->buf_addr_lo);
+    // deep copy
+    for(uint16_t i=0; i<size; ++i){
+        tx_buf[i] = data[i];
+    }
+
+    desc->len = size;
+    desc->cmd_cso = 1 | (1<<3);
+    desc->status = 0;
+    
+    tdt = (tdt+1) % 16;
+    WRITE_REG(m_reg_base + INTEL_82540_EM_TDT_OFFSET, tdt); 
 }
 
 void Intel_82540EM::get_mac_addr(bool v){
@@ -112,6 +137,37 @@ bool Intel_82540EM::init(){
     return good_status;
 }
 
+void Intel_82540EM::enable_interrupts(){
+    // Clear ICR
+    WRITE_REG(INTEL_82540_EM_ICR_OFFSET, 0);
+    // Use IMS to enable LCS(2) RXT0(7) TXDW(0)
+    SET_REG(INTEL_82540_EM_IMS_OFFSET, 1 | (1<<2) | (1<<7));
+}
+
+uint32_t Intel_82540EM::handle_interrupt(uint32_t esp){
+    // Read ICR
+    uint16_t interrupts = READ_REG(INTEL_82540_EM_ICR_OFFSET) & 0xFFFF;
+    printf("Some interrupt\n");
+    // Handle interrupts
+    if(interrupts & (1<<7)){ 
+        // RX 
+        printf("RX Interrupt ");
+    }
+    if(interrupts & (1<<2)){
+        // Link status change
+        printf("Link status interrupt ");
+    }
+    if(interrupts & (1<<0)){
+        // TX Complete
+        printf("Transmission Complete ");
+    }
+    
+    // // Clear ICR
+    // WRITE_REG(INTEL_82540_EM_ICR_OFFSET, 0);
+
+    return esp;
+}
+
 void Intel_82540EM::rx_setup(){
     m_rx_ring = (RX_Descriptor*)MemoryManager::active_memory_manager->malloc(RX_RING_SIZE * sizeof(RX_Descriptor), 16);
     if(!m_rx_ring){
@@ -153,7 +209,7 @@ void Intel_82540EM::rx_setup(){
 
     RESET_REG(INTEL_82540_RCTL_OFFSET, (1<<5) | (2<<6) | (2<<16));
     SET_REG(INTEL_82540_RCTL_OFFSET, (1<1) | (1<<15));
-    printf("RX Setup ");
+    printf(" RX Setup Complete ");
 }
 
 void Intel_82540EM::tx_setup(){
@@ -194,7 +250,7 @@ void Intel_82540EM::tx_setup(){
     WRITE_REG(INTEL_82540_EM_TDH_OFFSET, 0);
     WRITE_REG(INTEL_82540_EM_TDT_OFFSET, 0);
     SET_REG(INTEL_82540_TCTL_OFFSET, (1<<1) | (1<<3));
-    printf("TX Setup ");
+    printf(" TX Setup Complete ");
 }
 
 bool Intel_82540EM::write_phy(uint8_t reg, uint16_t data){
@@ -275,5 +331,5 @@ uint16_t Intel_82540EM::read_eeprom(uint8_t addr){
 }
 
 void Intel_82540EM::activate(){
-
+    enable_interrupts();
 }

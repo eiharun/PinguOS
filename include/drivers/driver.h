@@ -17,9 +17,9 @@ public:
 
 class DriverManager{
 private:
-    Driver* m_drivers[255];
-    uint8_t m_num_drivers;
+uint8_t m_num_drivers;
 public:
+    Driver* m_drivers[255]; // TODO move back to private
     DriverManager();
     void add_driver(Driver* driver);
     void activate_all();
