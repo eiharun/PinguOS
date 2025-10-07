@@ -250,7 +250,8 @@ void Intel_82540EM::rx_setup(){
         m_rx_ring[i].buf_addr_lo = (uint32_t)buffer;
         m_rx_ring[i].buf_addr_hi = 0;
         m_rx_ring[i].len = 0;
-        m_rx_ring[i].err_status = 0;
+        m_rx_ring[i].status = 0;
+        m_rx_ring[i].err = 0;
         m_rx_ring[i].checksum = 0;
         m_rx_ring[i].special = 0;
     }
