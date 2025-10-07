@@ -90,6 +90,33 @@ void Intel_82540EM::send_packet(uint8_t* data, uint16_t size){
 
 }
 
+void Intel_82540EM::handle_rx(){
+    /* read rdt, and get the next descriptor from it 
+       while each descriptor's DD bit is set, read the descriptors buf addr,
+       and save it. 
+       Then write new rdt ro reg, and increment the descriptor pointer.
+       Could also write rdt at the end of the while loop.
+    */
+    uint32_t rdt = READ_REG(m_reg_base + INTEL_82540_EM_RDT_OFFSET);
+    uint32_t next_rdt = (rdt+1) % RX_RING_SIZE;
+    RX_Descriptor* rx_desc = &m_rx_ring[next_rdt];
+
+    while(rx_desc->status & 1 /* Status DD bit*/){
+        uint16_t len = rx_desc->len;
+        uint8_t* buf = (uint8_t*)rx_desc->buf_addr_lo;
+        // handle data;
+        buf[len] = 0; // set null term for printf
+        printf((char*)buf); // printf recv
+        // TODO: handle properly
+
+        rx_desc->status = 0; // clear status 
+
+        next_rdt = (next_rdt+1) % RX_RING_SIZE;
+        rx_desc = &m_rx_ring[next_rdt];
+    }
+    WRITE_REG(m_reg_base + INTEL_82540_EM_RDT_OFFSET, next_rdt);
+}
+
 void Intel_82540EM::get_mac_addr(bool v){
     uint32_t ral = READ_REG(m_reg_base + INTEL_82540_EM_RAL_OFFSET);
     uint32_t rah = READ_REG(m_reg_base + INTEL_82540_EM_RAH_OFFSET) & 0xFFFF;
@@ -171,22 +198,28 @@ void Intel_82540EM::enable_interrupts(){
     WRITE_REG(m_reg_base + INTEL_82540_EM_ICR_OFFSET, 0xFFFFFFFF);
     // Use IMS to enable LCS(2) RXT0(7) TXDW(0)
     WRITE_REG(m_reg_base + INTEL_82540_EM_IMS_OFFSET, 1 | (1<<1) | (1<<2) | (1<<7) | (1<<15));
+
+    /* TODO:
+     Suggested bits include RXT, RXO, RXDMT,
+     RXSEQ, and LSC
+    */
 }
 
 uint32_t Intel_82540EM::handle_interrupt(uint32_t esp){
     // Read ICR
     uint16_t interrupts = READ_REG(m_reg_base + INTEL_82540_EM_ICR_OFFSET) & 0xFFFF;
-    printf("Some interrupt\n");
+    printf("\nSome interrupt ");
     // Handle interrupts
     if(interrupts & (1<<15)){
-        printf("Tx");
+        printf("Tx ");
     }
     if(interrupts & (1<<1)){
-        printf("TX empty");
+        printf("TX empty ");
     }
     if(interrupts & (1<<7)){ 
         // RX 
         printf("RX Interrupt ");
+        handle_rx();
     }
     if(interrupts & (1<<2)){
         // Link status change
@@ -196,9 +229,7 @@ uint32_t Intel_82540EM::handle_interrupt(uint32_t esp){
         // TX Complete
         printf("Transmission Complete ");
     }
-    
-    // // Clear ICR
-    // WRITE_REG(INTEL_82540_EM_ICR_OFFSET, 0);
+    printf("\n");
 
     return esp;
 }

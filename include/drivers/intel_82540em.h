@@ -5,10 +5,10 @@
 
 using namespace hardware_communication;
 
-// REGISTER OFFSETS
 
 namespace drivers {
-
+    
+// REGISTER OFFSETS
 #define INTEL_82540_EM_STATUS_OFFSET 0x08
 #define INTEL_82540_EM_EECD_OFFSET 0x10
 #define INTEL_82540_EM_EERD_OFFSET 0x14
@@ -64,6 +64,8 @@ private:
     void rx_setup();
     void tx_setup();
     
+    void handle_rx();
+
     void enable_interrupts();
     int enable_bus_mastering();
     
@@ -76,7 +78,8 @@ private:
         uint32_t buf_addr_hi; 
         uint16_t len;
         uint16_t checksum;
-        uint16_t err_status;
+        uint8_t status;
+        uint8_t err;
         uint16_t special;
     }__attribute__((packed));
     
