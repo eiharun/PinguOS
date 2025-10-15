@@ -10,3 +10,6 @@ self.md
 
 .vscode
 .clangd
+
+# qemu disk image
+*.qcow2

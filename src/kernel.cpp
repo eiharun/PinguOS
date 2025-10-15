@@ -13,6 +13,7 @@
 #include <memory_management.h>
 #include <common/macro.h>
 #include <drivers/intel_82540em.h>
+#include <drivers/ata.h>
 
 // #define GRAPHICS_MODE
 
@@ -175,12 +176,28 @@ extern "C" void pingu_kernel_main(const void* multiboot_struct, uint32_t magic_n
 
     vga.set_mode(320, 200, 8);
     #endif
+    // int 14
+    ATA ata0m(0x1F0, true);
+    printf("ATA Primary Master: ");
+    ata0m.identify();
+    ATA ata0s(0x1F0, false);
+    printf("ATA Primary Slave: ");
+    ata0s.identify();
+    char* buffer = "PinguOnA Hard Disk Drive!";
+    ata0m.write_28(0, (uint8_t*)buffer, 25);
+    ata0m.flush();
+    buffer = "\n";
+    ata0m.read_28(0,(uint8_t*)buffer, 25);
+
+    // int 15
+    ATA ata1m(0x170, true);
+    ATA ata1s(0x170, false);
 
     interrupts.activate();
     for(int i = 0; i<100000000; ++i){}
-    uint8_t data[5] = {'A', 'B', 'C', 'D', 'E'};
-    Intel_82540EM* eth0 = (Intel_82540EM*)(driver_manager.m_drivers[2]);
-    eth0->send_packet(data, 5);
+    // uint8_t data[5] = {'A', 'B', 'C', 'D', 'E'};
+    // Intel_82540EM* eth0 = (Intel_82540EM*)(driver_manager.m_drivers[2]);
+    // eth0->send_packet(data, 5);
     while(1){
         #ifdef GRAPHICS_MODE
             desktop.draw(&vga);

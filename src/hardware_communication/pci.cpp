@@ -239,6 +239,23 @@ Driver* PCIController::get_driver(PCIDeviceDescriptor dev, InterruptManager* int
                     break;
             }
             break;
+        case 0x01: // Mass Storage Controller
+            switch(dev.subclass_id){
+                case 0x01:
+                    printf("IDE Controller: ");
+                    break;
+                case 0x05:
+                    printf("ATA Controller: ");
+                    break;
+                case 0x06: 
+                    printf("SATA Controller: ");
+                    switch(dev.interface_id){
+                        case 0x01:
+                            printf("AHCI 1.0: ");
+                            break;
+                    }
+                    break;
+            }
         case 0x03: // Graphics
             switch(dev.subclass_id){
                 case 0x00: // VGA
