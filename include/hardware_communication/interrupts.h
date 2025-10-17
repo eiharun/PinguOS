@@ -86,7 +86,7 @@ public:
     static void handleInterruptRequest0x0F();
     static void handleInterruptRequest0x31();
 
-    static void handleInterruptRequest0x80();
+    static void handleInterruptRequest0x80(); // Syscall
 
     static void handleException0x00();
     static void handleException0x01();

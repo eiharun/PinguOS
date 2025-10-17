@@ -11,6 +11,7 @@
 #include <gui/window.h>
 #include <multitask.h>
 #include <memory_management.h>
+#include <syscalls.h>
 #include <common/macro.h>
 #include <drivers/intel_82540em.h>
 #include <drivers/ata.h>
@@ -21,15 +22,17 @@ using namespace drivers;
 using namespace gui;
 using namespace multitasking;
 
-void printf(int8_t* string);
+void sysprintf(char* str){
+    asm("int $0x80" : : "a" (4), "b" (str));
+}
 void taskA(){
     while(true){
-        printf("A");
+        sysprintf("A");
     }
 }
 void taskB(){
     while(true){
-        printf("B");
+        sysprintf("B");
     }
 }
 
@@ -127,13 +130,14 @@ extern "C" void pingu_kernel_main(const void* multiboot_struct, uint32_t magic_n
     printf("\n");
 
     TaskManager task_manager;
-    // Task task1(&gdt, taskA);
-    // Task task2(&gdt, taskB);
-    // task_manager.add_task(&task1);
-    // task_manager.add_task(&task2);
+    Task task1(&gdt, taskA);
+    Task task2(&gdt, taskB);
+    task_manager.add_task(&task1);
+    task_manager.add_task(&task2);
 
     InterruptManager interrupts(&gdt, &task_manager);
-    
+    SyscallHandler syscalls(&interrupts, 0x80);
+
     #ifdef GRAPHICS_MODE
         rgb color{0x00,0x00,0xA8};
         Desktop desktop(320,200, color);

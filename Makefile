@@ -14,6 +14,7 @@ objects =  	loader gdt \
 			drivers/vga drivers/ata \
 			drivers/intel_82540em \
 			gui/widget gui/desktop gui/window \
+			syscalls \
 			multitask \
 			kernel
 OBJS := $(objects:%=$(BUILD_DIR)/%.o)
