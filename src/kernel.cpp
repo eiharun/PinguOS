@@ -15,6 +15,7 @@
 #include <common/macro.h>
 #include <drivers/intel_82540em.h>
 #include <drivers/ata.h>
+#include <filesystem/msdospart.h>
 
 // #define GRAPHICS_MODE
 
@@ -130,10 +131,10 @@ extern "C" void pingu_kernel_main(const void* multiboot_struct, uint32_t magic_n
     printf("\n");
 
     TaskManager task_manager;
-    Task task1(&gdt, taskA);
-    Task task2(&gdt, taskB);
-    task_manager.add_task(&task1);
-    task_manager.add_task(&task2);
+    // Task task1(&gdt, taskA);
+    // Task task2(&gdt, taskB);
+    // task_manager.add_task(&task1);
+    // task_manager.add_task(&task2);
 
     InterruptManager interrupts(&gdt, &task_manager);
     SyscallHandler syscalls(&interrupts, 0x80);
@@ -187,12 +188,7 @@ extern "C" void pingu_kernel_main(const void* multiboot_struct, uint32_t magic_n
     ATA ata0s(0x1F0, false);
     printf("ATA Primary Slave: ");
     ata0s.identify();
-    char* buffer = "PinguOnA Hard Disk Drive!";
-    ata0m.write_28(0, (uint8_t*)buffer, 25);
-    ata0m.flush();
-    buffer = "\n";
-    ata0m.read_28(0,(uint8_t*)buffer, 25);
-
+    filesystem::MSDOSPartitionTable::read_partitions(&ata0s);
     // int 15
     ATA ata1m(0x170, true);
     ATA ata1s(0x170, false);

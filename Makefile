@@ -14,6 +14,7 @@ objects =  	loader gdt \
 			drivers/vga drivers/ata \
 			drivers/intel_82540em \
 			gui/widget gui/desktop gui/window \
+			filesystem/msdospart \
 			syscalls \
 			multitask \
 			kernel
@@ -54,8 +55,8 @@ run: $(BUILD_DIR)/pingukernel.iso
 # kill current vm if necesarry
 	qemu-system-i386 -drive format=raw,file=$(BUILD_DIR)/pingukernel.iso \
 	-netdev user,id=net0 \
-	-device e1000,netdev=net0 
-	-drive id=datadisk,file=ahci-disk.qcow2,if=none,format=qcow2 \
+	-device e1000,netdev=net0 \
+	-drive file=ahci-disk.qcow2,if=ide \
 	-trace e1000*
 
 

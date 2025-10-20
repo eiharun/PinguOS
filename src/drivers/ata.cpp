@@ -111,7 +111,7 @@ void ATA::read_28(uint32_t sector, uint8_t* data, size_t count){
         char* foo = "  \0";
         foo[1] = (w_data >> 8) & 0x00FF;
         foo[0] = w_data & 0x00FF;
-        printf(foo);
+        // printf(foo);
         data[i] = w_data & 0x00FF;
         if(i+1 < count)
             data[i+1] = (w_data >> 8) & 0x00FF;
