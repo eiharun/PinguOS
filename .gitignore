@@ -13,3 +13,4 @@ self.md
 
 # qemu disk image
 *.qcow2
+*.img

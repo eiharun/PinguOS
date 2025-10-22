@@ -97,20 +97,29 @@ void ATA::read_28(uint32_t sector, uint8_t* data, size_t count){
         return;
     }
    
-    while(((status & 0x80) == 0x80) && ((status & 0x01) == 0x01)){
+    while (status & 0x80)  // wait until BSY clears
+        status = m_command_port.read();
+
+    while (!(status & 0x08)) {  // wait until DRQ sets
+        if (status & 0x01) {    // ERR
+            printf("ERROR");
+            return;
+        }
         status = m_command_port.read();
     }
+
     if(status & 0x01){
         printf("ERROR");
         return;
     }
     
-    printf(" Reading from ATA ");
+    // printf(" Reading from ATA ");
+    // printf(" ");
     for(uint16_t i=0; i<count; i+=2){
         uint16_t w_data = m_data_port.read();
-        char* foo = "  \0";
-        foo[1] = (w_data >> 8) & 0x00FF;
-        foo[0] = w_data & 0x00FF;
+        // char* foo = "  \0";
+        // foo[1] = (w_data >> 8) & 0x00FF;
+        // foo[0] = w_data & 0x00FF;
         // printf(foo);
         data[i] = w_data & 0x00FF;
         if(i+1 < count)

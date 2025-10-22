@@ -14,7 +14,7 @@ struct PartitionTableEntry{
     uint8_t start_sector: 6;
     uint16_t start_cylinder: 10;
     
-    uint8_t cylinder_id;
+    uint8_t partition_id;
     
     uint8_t end_head;
     uint8_t end_sector: 6;

@@ -14,7 +14,7 @@ objects =  	loader gdt \
 			drivers/vga drivers/ata \
 			drivers/intel_82540em \
 			gui/widget gui/desktop gui/window \
-			filesystem/msdospart \
+			filesystem/msdospart filesystem/fat \
 			syscalls \
 			multitask \
 			kernel
@@ -56,7 +56,7 @@ run: $(BUILD_DIR)/pingukernel.iso
 	qemu-system-i386 -drive format=raw,file=$(BUILD_DIR)/pingukernel.iso \
 	-netdev user,id=net0 \
 	-device e1000,netdev=net0 \
-	-drive file=ahci-disk.qcow2,if=ide \
+	-drive file=disk.img,format=raw,if=ide \
 	-trace e1000*
 
 

@@ -6,7 +6,7 @@
 
 ## How to run
 
-Clone the repo, install all [dependencies](#dependencies), and run
+Clone the repo, install all [dependencies](#dependencies), create a raw qemu-img named `disk.img` and partition and format to fat32, and run
 
 ```sh
 > make run
@@ -18,6 +18,9 @@ and it should build and run qemu
 
 ## Verions
 
+- 0.1.12: FAT32 Filesystem
+- 0.1.11: Basic Syscalls Implementation
+- 0.1.10: Basic e1000 NIC Driver
 - 0.1.9: Heap
 - 0.1.8: Multitasking (RR Scheduling)
 - 0.1.7: Basic VGA GUI Framework
