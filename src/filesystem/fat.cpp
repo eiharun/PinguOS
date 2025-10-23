@@ -19,12 +19,12 @@ void filesystem::read_bios_block(drivers::ATA* hd, uint32_t partition_offset){
 
     uint32_t root_start = data_start + bpb.sectors_per_cluster*(bpb.root_cluster-2);
 
-    const uint32_t sector_size = bpb.bytes_per_sector;
-    const uint32_t cluster_size_b = bpb.sectors_per_cluster * sector_size;
+    const uint32_t SECTOR_SIZE = bpb.bytes_per_sector;
+    const uint32_t cluster_size_b = bpb.sectors_per_cluster * SECTOR_SIZE;
     uint8_t root_cluster[cluster_size_b];
 
     for(int i=0; i<bpb.sectors_per_cluster; ++i){
-        hd->read_28(root_start+i, root_cluster+(sector_size*i), sector_size);
+        hd->read_28(root_start+i, root_cluster+(SECTOR_SIZE*i), SECTOR_SIZE);
     }
 
     DirectoryEntryFat32* dir = (DirectoryEntryFat32*)root_cluster;
@@ -50,12 +50,29 @@ void filesystem::read_bios_block(drivers::ATA* hd, uint32_t partition_offset){
         }
 
         uint32_t file_cluster = ((uint32_t)dir[i].first_cluster_hi) << 16 | (uint32_t)dir[i].first_cluster_lo;
-        uint32_t file_sector = data_start + bpb.sectors_per_cluster * (file_cluster-2);
-        uint8_t buf[512];
-        hd->read_28(file_sector, buf, 512);
-        buf[dir[i].size] = '\0';
-        printf("    ");
-        printf((char*)buf);
+        
+        int32_t SIZE = dir[i].size;
+        int32_t next_file_cluster = file_cluster;
+        uint8_t buf[SECTOR_SIZE+1];
+        while(SIZE > 0){
+            uint32_t file_sector = data_start + bpb.sectors_per_cluster * (next_file_cluster-2);
+            uint32_t sector_offset{};
+            
+            for(; SIZE>0; SIZE -= SECTOR_SIZE){
+                hd->read_28(file_sector+sector_offset, buf, SECTOR_SIZE);
+                buf[SIZE > SECTOR_SIZE ? SECTOR_SIZE : SIZE] = '\0';
+                printf("    ");
+                printf((char*)buf);
+                if(++sector_offset > bpb.sectors_per_cluster-1){
+                    break;
+                }
+            }
+            uint8_t fatbuf[SECTOR_SIZE+1];
+            uint32_t fat_sector_curr_cluster = next_file_cluster / (SECTOR_SIZE/sizeof(uint32_t));
+            hd->read_28(fat_start + fat_sector_curr_cluster, fatbuf, SECTOR_SIZE);
+            uint32_t fat_offset_in_sector_curr_cluster = next_file_cluster % (SECTOR_SIZE/sizeof(uint32_t));
+            next_file_cluster = ((uint32_t*)&fatbuf)[fat_offset_in_sector_curr_cluster] & 0x0FFFFFFF;
+        }
     }
     printf("\n\n");
 
