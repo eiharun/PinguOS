@@ -53,6 +53,17 @@ struct DirectoryEntryFat32{
     uint32_t size;
 }__attribute__((packed));
 
+struct LongFileName32{
+    uint8_t order;
+    uint8_t first[10];
+    uint8_t attribute;
+    uint8_t type;
+    uint8_t checksum;
+    uint8_t mid[12];
+    uint16_t reserved_0;
+    uint8_t last[4];
+}__attribute__((packed));
+
 void read_bios_block(drivers::ATA* hd, uint32_t partition_offset);
 
 }

@@ -1,6 +1,5 @@
 #include <filesystem/fat.h>
 
-// using namespace drivers;
 using namespace filesystem;
 
 void printf(char*);
@@ -32,12 +31,15 @@ void filesystem::read_bios_block(drivers::ATA* hd, uint32_t partition_offset){
     // DirectoryEntryFat32 dir[16];
     // hd->read_28(root_start, (uint8_t*)&dir[0], sizeof(DirectoryEntryFat32)*16);
     printf("\n\n");
-    for(int i=0 ; i<16; ++i){
+    for(int i=0 ; i<num_entries; ++i){
         if(dir[i].name[0] == 0x00){
-            break;
+            break; // No more entries
+        }
+        if(dir[i].name[0] == 0xE5){
+            continue; // Removed file
         }
         if((dir[i].attributes & 0x0F) == 0x0F){
-            continue;
+            continue; // Long file name (NO SUPPORT YET)
         }
         char* foo = "        \n";
         for(int j = 0; j<8; ++j){
@@ -54,14 +56,14 @@ void filesystem::read_bios_block(drivers::ATA* hd, uint32_t partition_offset){
         int32_t SIZE = dir[i].size;
         int32_t next_file_cluster = file_cluster;
         uint8_t buf[SECTOR_SIZE+1];
-        while(SIZE > 0){
+        while((SIZE > 0) && (next_file_cluster < 0x0FFFFFF8)){
             uint32_t file_sector = data_start + bpb.sectors_per_cluster * (next_file_cluster-2);
             uint32_t sector_offset{};
             
+            printf("    ");
             for(; SIZE>0; SIZE -= SECTOR_SIZE){
                 hd->read_28(file_sector+sector_offset, buf, SECTOR_SIZE);
                 buf[SIZE > SECTOR_SIZE ? SECTOR_SIZE : SIZE] = '\0';
-                printf("    ");
                 printf((char*)buf);
                 if(++sector_offset > bpb.sectors_per_cluster-1){
                     break;

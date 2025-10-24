@@ -67,7 +67,7 @@ build: $(BUILD_DIR)/pingukernel.bin
 
 debug: $(BUILD_DIR)/pingukernel.iso
 	tmux new-session -d -s qemu_debug \
-		"qemu-system-i386 -s -S -drive format=raw,file=$(BUILD_DIR)/pingukernel.iso -monitor stdio" \; \
+		"qemu-system-i386 -s -S -drive format=raw,file=$(BUILD_DIR)/pingukernel.iso -drive file=disk.img,format=raw,if=ide" \; \
 		split-window -h "sleep 2; gdb -ex 'target remote :1234' -ex 'set architecture i386' -ex 'file $(BUILD_DIR)/pingukernel.bin' " \; \
 		select-pane -t 0 \; \
 		attach

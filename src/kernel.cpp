@@ -181,7 +181,7 @@ extern "C" void pingu_kernel_main(const void* multiboot_struct, uint32_t magic_n
 
     vga.set_mode(320, 200, 8);
     #endif
-    printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
+    printf("\n\n\n\n\n\n\n\n\n\n\n");
 
     // int 14
     ATA ata0m(0x1F0, true);
