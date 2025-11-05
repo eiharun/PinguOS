@@ -1,5 +1,7 @@
+#pragma once
 #include <common/types.h>
 #include <drivers/ata.h>
+#include <filesystem/filesystem.h>
 
 using namespace common;
 
@@ -55,15 +57,65 @@ struct DirectoryEntryFat32{
 
 struct LongFileName32{
     uint8_t order;
-    uint8_t first[10];
+    uint16_t name1[5];
     uint8_t attribute;
     uint8_t type;
     uint8_t checksum;
-    uint8_t mid[12];
+    uint16_t name2[6];
     uint16_t reserved_0;
-    uint8_t last[4];
+    uint16_t name3[2];
 }__attribute__((packed));
 
-void read_bios_block(drivers::ATA* hd, uint32_t partition_offset);
+
+class FAT32DirectoryIterator: public DirectoryIterator{
+public:
+    FAT32DirectoryIterator(drivers::ATA* disk, BiosParameterBlock32* bpb, uint32_t partition_offset, uint32_t start_cluster);
+    void load_cluster();
+    FSError next(FileEntry& file) override;
+    FSError load_next_cluster();
+    void convert_entry(DirectoryEntryFat32* src, FileEntry& dst);
+    void reset() override;
+private:
+    drivers::ATA* m_disk;
+    BiosParameterBlock32* m_bpb;
+    uint32_t m_partition_offset;
+    uint8_t m_cluster_buffer[512 * 8]; 
+    uint32_t m_entry_index;             
+    uint32_t m_entries_per_cluster;
+    uint32_t m_current_cluster;
+    uint32_t m_start_cluster;
+    bool m_finished;
+};
+
+class FAT32: public Filesystem{
+public:
+    FAT32(drivers::ATA* disk, uint32_t partition_offset);
+    ~FAT32(); 
+
+    FSError mount() override;
+    void unmount() override;
+    static bool detect(uint8_t* boot_sector);
+
+    FSError open(const char* path, FileHandle& handle) override;
+    FSError read(FileHandle& handle, uint8_t* buffer, size_t size, uint32_t& bytes_read) override;
+    FSError seek(FileHandle& handle, uint32_t position) override;
+    void close(FileHandle& handle) override;
+    FSError open_directory(const char* path, DirectoryIterator*& iterator) override;
+    void close_directory(DirectoryIterator* iterator) override;
+    FSError stat(const char* path, FileEntry& file) override;
+    bool exists(const char* path) override;
+    const char* get_fs_name() const override;
+
+private:
+    uint32_t get_next_cluster(uint32_t cluster);
+    FSError read_cluster(uint32_t cluster, uint8_t* buffer, uint32_t offset, uint32_t size);
+    
+    drivers::ATA* m_disk;
+    BiosParameterBlock32 m_bpb;
+    uint32_t m_fat_start;
+    uint32_t m_data_start;
+    uint8_t m_sector_buf[512];
+};
+
 
 }

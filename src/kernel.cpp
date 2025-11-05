@@ -181,7 +181,7 @@ extern "C" void pingu_kernel_main(const void* multiboot_struct, uint32_t magic_n
 
     vga.set_mode(320, 200, 8);
     #endif
-    printf("\n\n\n\n\n\n\n\n\n\n\n");
+    printf("\n\n\n\n\n\n");
 
     // int 14
     ATA ata0m(0x1F0, true);
@@ -193,9 +193,11 @@ extern "C" void pingu_kernel_main(const void* multiboot_struct, uint32_t magic_n
     printf("\n");
     printf("\n");
     filesystem::MSDOSPartitionTable::read_partitions(&ata0s);
-    // int 15
-    ATA ata1m(0x170, true);
-    ATA ata1s(0x170, false);
+    // filesystem::MSDOSPartitionTable msdos(&ata0s);
+    
+    // // int 15
+    // ATA ata1m(0x170, true);
+    // ATA ata1s(0x170, false);
 
     interrupts.activate();
     for(int i = 0; i<100000000; ++i){}

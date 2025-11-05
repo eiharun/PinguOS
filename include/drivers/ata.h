@@ -5,7 +5,16 @@ using namespace hardware_communication;
 
 namespace drivers {
 
-class ATA{
+enum class ATA_ERR_CODES{
+    SUCCESS=0,
+    DNE,
+    NOT_ATA,
+    INVALID_SECTOR,
+    INVALID_SIZE,
+    OTHER
+};
+
+class ATA {
 protected:
     Port16 m_data_port;
     Port8 m_err_port;
@@ -22,10 +31,10 @@ public:
     ATA(uint16_t port_base, bool master);
     ~ATA();
 
-    void identify();
-    void read_28(uint32_t sector, uint8_t* data, size_t count);
-    void write_28(uint32_t sector, uint8_t* data, size_t count);
-    void flush();
+    ATA_ERR_CODES identify();
+    ATA_ERR_CODES read_28(uint32_t sector, uint8_t* data, size_t count);
+    ATA_ERR_CODES write_28(uint32_t sector, uint8_t* data, size_t count);
+    ATA_ERR_CODES flush();
 };
 
 }

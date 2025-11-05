@@ -1,4 +1,5 @@
 #pragma once
+#include "filesystem/fat.h"
 #include <common/types.h>
 #include <drivers/ata.h>
 
@@ -34,9 +35,15 @@ struct MasterBootRecord{
     uint16_t magic_number;
 }__attribute__((packed));
 
+enum class MSDOSERR {SUCCESS=0, PARTITION_DOES_NOT_EXIST};
+
 class MSDOSPartitionTable{
 public:
+    MSDOSPartitionTable(ATA* hd);
     static void read_partitions(ATA* hd);
+    MSDOSERR get_partition_offset(uint32_t& offset, int partition_number) ;
+private:
+    MasterBootRecord m_mbr;
 };
 
 }
