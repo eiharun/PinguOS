@@ -66,6 +66,28 @@ public:
         return true;
     }
     
+    static bool split_filename_ext(const char* filename, char* components[2]){
+        bool split{false};
+        int len_name{};
+        int len_ext{};
+        for(int i=0; filename[i]!='.'; ++i){
+            if(filename[i]=='\0'){
+                components[0][len_name] = '\0';
+                return split;
+            }
+            components[0][i] = filename[i];
+            len_name++;
+        }
+        components[0][len_name] = '\0';
+        split = true;
+        for(int i=0; filename[i]!='\0'; ++i){
+            components[1][i] = filename[i];
+            len_ext++;
+        }
+        components[1][len_ext] = '\0';
+        return split;
+    }
+
     // Compare filename (8.3 format) with pattern
     static bool match_filename(const char* filename, const char* pattern) {
         // Simple exact match for now

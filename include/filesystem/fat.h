@@ -39,6 +39,11 @@ struct BiosParameterBlock32{
     uint8_t fat_type_label[8];
 }__attribute__((packed));
 
+#define ENTRY_END 0x00
+#define ENTRY_DELETED 0xE5
+#define IS_END_OF_CHAIN(cluster) cluster>=0x0FFFF8
+#define NAME_SIZE_8_3 11
+
 struct DirectoryEntryFat32{
     uint8_t name[8];
     uint8_t ext[3];
@@ -97,19 +102,32 @@ public:
     static bool detect(uint8_t* boot_sector);
 
     FSError open(const char* path, FileHandle& handle) override;
+    FSError write(FileHandle& handle, uint8_t* buffer, size_t size, WRITE_MODE mode) override;
     FSError read(FileHandle& handle, uint8_t* buffer, size_t size, uint32_t& bytes_read) override;
     FSError seek(FileHandle& handle, uint32_t position) override;
     void close(FileHandle& handle) override;
+
+    FSError make_file(const char* path, const char* filename) override;
+    FSError delete_file(FileHandle& handle) override;
+    FSError make_directory(const char* path, const char* dirname) override;
+    FSError delete_directory(const char* path) override;
+
     FSError open_directory(const char* path, DirectoryIterator*& iterator) override;
     void close_directory(DirectoryIterator* iterator) override;
     FSError stat(const char* path, FileEntry& file) override;
     bool exists(const char* path) override;
     const char* get_fs_name() const override;
+    FSError print_list_directory(void(*printf)(char*), const char* path);
 
 private:
     uint32_t get_next_cluster(uint32_t cluster);
+    void link_next_cluster(uint32_t current_cluster, uint32_t next_cluster);
     FSError read_cluster(uint32_t cluster, uint8_t* buffer, uint32_t offset, uint32_t size);
-    
+    FSError write_cluster(uint32_t cluster, uint8_t* buffer, uint32_t offset, uint32_t size);
+    FSError zero_cluster(uint32_t cluster);
+    uint32_t allocate_cluster();
+    FSError create_directory_entry(FileEntry& new_entry);
+
     drivers::ATA* m_disk;
     BiosParameterBlock32 m_bpb;
     uint32_t m_fat_start;

@@ -44,29 +44,7 @@ void MSDOSPartitionTable::read_partitions(ATA* hd){
         printf_hex(i);
         printf("\n");
         
-        DirectoryIterator* iter = nullptr;
-        if(fs.open_directory("/", iter) != FSError::SUCCESS){
-            printf("Failed to open root dir\n");
-            return;
-        }
-        FileEntry entry;
-        while(iter->next(entry) == FSError::SUCCESS){
-            printf(" ");
-            if(entry.is_directory()){
-                printf("[DIR] ");
-            }
-            else{
-                printf("[FILE] ");
-            }
-            printf(entry.name);
-            if(entry.is_file()){
-                printf(" (0x");
-                printf_hex32(entry.size);
-                printf(" bytes) ");
-            }
-            printf("\n");
-        }
-        fs.close_directory(iter);
+        fs.print_list_directory(printf, "/");
         
         FileHandle file1;
         FSError err = fs.open("/FILE2.TXT", file1);
