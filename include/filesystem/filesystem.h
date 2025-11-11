@@ -17,7 +17,8 @@ enum class FSError{
     INVALID_FILESYSTEM,
     BUFFER_TOO_SMALL,
     OUT_OF_MEMORY,
-    DISK_FULL
+    DISK_FULL,
+    END_OF_CHAIN
 };
 
 enum FileAttributes : uint8_t {

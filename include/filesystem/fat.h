@@ -76,8 +76,10 @@ class FAT32DirectoryIterator: public DirectoryIterator{
 public:
     FAT32DirectoryIterator(drivers::ATA* disk, BiosParameterBlock32* bpb, uint32_t partition_offset, uint32_t start_cluster);
     void load_cluster();
+    void write_back_cluster();
     FSError next(FileEntry& file) override;
     FSError load_next_cluster();
+    void delete_dir_entry();
     void convert_entry(DirectoryEntryFat32* src, FileEntry& dst);
     void reset() override;
 private:

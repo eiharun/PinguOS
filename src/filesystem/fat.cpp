@@ -42,6 +42,21 @@ void FAT32DirectoryIterator::load_cluster(){
     m_entry_index = 0;
 }
 
+void FAT32DirectoryIterator::write_back_cluster(){
+    uint32_t fat_start = m_partition_offset + m_bpb->reserved_sectors;
+    uint32_t fat_size = m_bpb->table_size;
+
+    uint32_t data_start = fat_start + fat_size*m_bpb->fat_copies;
+
+    uint32_t cluster_sector = data_start + m_bpb->sectors_per_cluster*(m_current_cluster-2);
+    // Index by number of current cluster, increments of sectors
+    for(int i=0; i<m_bpb->sectors_per_cluster; ++i){
+        m_disk->write_28(cluster_sector+i, m_cluster_buffer+(m_bpb->bytes_per_sector*i), m_bpb->bytes_per_sector);
+    }
+
+    m_entry_index = 0;
+}
+
 FSError FAT32DirectoryIterator::load_next_cluster(){
     uint32_t fat_start = m_partition_offset + m_bpb->reserved_sectors;
     uint32_t fat_sector = m_current_cluster / (m_bpb->bytes_per_sector / 4); // Find sector within FAT where current cluster is
@@ -71,11 +86,11 @@ FSError FAT32DirectoryIterator::next(FileEntry& file){
     while(m_entry_index < m_entries_per_cluster){
         DirectoryEntryFat32* dir_entry = &entries[m_entry_index];
         m_entry_index++;
-        if(dir_entry->name[0] == 0x00){
+        if(dir_entry->name[0] == ENTRY_END){
             m_finished = true;
             return FSError::END_OF_DIRECTORY;
         }
-        if(dir_entry->name[0] == 0xE5){
+        if(dir_entry->name[0] == ENTRY_DELETED){
             continue; // Deleted file
         }
         if((dir_entry->attributes & 0x0F) == 0x0F){
@@ -94,6 +109,13 @@ FSError FAT32DirectoryIterator::next(FileEntry& file){
     return next(file);
 }
 
+void FAT32DirectoryIterator::delete_dir_entry(){
+    // FIXME: Untested
+    DirectoryEntryFat32* entries = (DirectoryEntryFat32*)m_cluster_buffer;
+    DirectoryEntryFat32* dir_entry = &entries[m_entry_index];
+    dir_entry->name[0] = ENTRY_DELETED;
+    write_back_cluster();
+}
 
 void FAT32DirectoryIterator::convert_entry(DirectoryEntryFat32* src, FileEntry& dst){
     int name_len{};
@@ -256,18 +278,27 @@ FSError FAT32::read(FileHandle& handle, uint8_t* buffer, size_t size, uint32_t& 
 FSError FAT32::seek(FileHandle& handle, uint32_t position){
     if(!handle.valid) return FSError::INVALID_PATH;
     if(position > handle.size) return FSError::INVALID_PATH;
-    // TODO Use more descriptor error types
+    // TODO Use more descriptive error types
     FileEntry entry;
     if(position==0){
         handle.cluster = handle.start_cluster;
         handle.position = 0;
     }
     else{
-        // Only seek to start of file for now
-        return FSError::INVALID_PATH;
+        uint32_t clusterchain_index = position / (m_bpb.sectors_per_cluster*m_bpb.bytes_per_sector);
+        // Follow fat chain for the "clusterchain_index" element in the chain. 
+        uint32_t new_cluster = handle.cluster;
+        for(int _=0; _ < clusterchain_index; ++_){
+            new_cluster = get_next_cluster(new_cluster);
+            if(IS_END_OF_CHAIN(new_cluster)){
+                // If EOC before "clusterchain_index", then FSError:INVALID_PATH
+                // Should never get here since position must be smaller than file size assertion is already made
+                return FSError::END_OF_CHAIN;
+            }
+        }
+        handle.cluster = new_cluster;
+        handle.position = position;
     }
-    // TODO: find which cluster `position` is in and set handle.cluster to it 
-
     return FSError::SUCCESS;
 }
 
@@ -294,7 +325,7 @@ FSError FAT32::make_file(const char* path, const char* filename){
         return FSError::DISK_FULL;
     }
     // Clear cluster (0)
-    zero_cluster(file_cluster);
+    zero_cluster(file_cluster); //FIXME: Is zeroing necesarry?
     // Add dir entry to parent directory
     FileEntry new_file_entry;
     int name_len{};
@@ -304,7 +335,7 @@ FSError FAT32::make_file(const char* path, const char* filename){
     new_file_entry.name[name_len] = '\0';
     new_file_entry.parent_cluster = parent_cluster;
     new_file_entry.size = 0;
-    new_file_entry.attributes = ATTR_ARCHIVE;
+    new_file_entry.attributes = FileAttributes::ATTR_ARCHIVE;
     new_file_entry.first_cluster = file_cluster;
     create_directory_entry(new_file_entry);
 
@@ -312,15 +343,72 @@ FSError FAT32::make_file(const char* path, const char* filename){
 }
 
 FSError FAT32::delete_file(FileHandle& handle){
-
+    // Get directory entry for file
+    FAT32DirectoryIterator iter(m_disk, &m_bpb, m_partition_offset, handle.parent_cluster);
+    FileEntry entry;
+    while(iter.next(entry) == FSError::SUCCESS){
+        if(entry.first_cluster == handle.start_cluster){
+            iter.delete_dir_entry();
+            return FSError::SUCCESS;
+        }
+    }
+    return FSError::NOT_FOUND;
 }
 
 FSError FAT32::make_directory(const char* path, const char* dirname){
-
+    // TODO: Disallow duplicate dirs in same dir
+    // Get parent cluster
+    FileEntry entry;
+    uint32_t parent_cluster;
+    if(PathUtils::strcmp(path, "/")){
+        parent_cluster = m_bpb.root_cluster;
+    }
+    else{
+        FSError err = stat(path, entry);
+        parent_cluster = entry.parent_cluster;
+    }
+    // allocate cluster
+    uint32_t file_cluster = allocate_cluster();
+    if(file_cluster == 0){
+        return FSError::DISK_FULL;
+    }
+    // create and fill new file entry
+    FileEntry new_file_entry;
+    int name_len{};
+    for(int i=0; dirname[i]!='\0'; ++i){
+        new_file_entry.name[name_len++] = dirname[i];
+    }
+    new_file_entry.name[name_len] = '\0';
+    new_file_entry.parent_cluster = parent_cluster;
+    new_file_entry.size = 0;
+    new_file_entry.attributes = FileAttributes::ATTR_DIRECTORY;
+    new_file_entry.first_cluster = file_cluster;
+    // call create_directory_entry()
+    create_directory_entry(new_file_entry);
+    
+    return FSError::SUCCESS;
 }
 
 FSError FAT32::delete_directory(const char* path){
-
+    FileEntry entry;
+    uint32_t parent_cluster;
+    if(PathUtils::strcmp(path, "/")){
+        parent_cluster = m_bpb.root_cluster;
+    }
+    else{
+        FSError err = stat(path, entry);
+        parent_cluster = entry.parent_cluster;
+    }
+    // Get directory entry for dir
+    FAT32DirectoryIterator iter(m_disk, &m_bpb, m_partition_offset, entry.parent_cluster);
+    FileEntry rm_entry;
+    while(iter.next(rm_entry) == FSError::SUCCESS){
+        if(rm_entry.first_cluster == entry.first_cluster){
+            iter.delete_dir_entry();
+            return FSError::SUCCESS;
+        }
+    }
+    return FSError::NOT_FOUND;
 }
 
 
