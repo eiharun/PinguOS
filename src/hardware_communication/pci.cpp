@@ -217,7 +217,7 @@ Driver* PCIController::get_driver(PCIDeviceDescriptor dev, InterruptManager* int
                     // else{
                     // }
                     printf("Instantiating Driver ");
-                    driver = (Intel_82540EM*)memory_management::MemoryManager::active_memory_manager->malloc(sizeof(Intel_82540EM));
+                    driver = (Intel_82540EM*)memory_management::Allocator::active_memory_manager->malloc(sizeof(Intel_82540EM));
                     if(driver != 0){
                         new (driver) Intel_82540EM(&dev,interrupt);
                     }

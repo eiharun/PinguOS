@@ -1,19 +1,18 @@
-#include "drivers/intel_82540em.h"
 #include "filesystem/filesystem.h"
 #include <filesystem/fat.h>
-#include <memory_management.h>
+#include <allocator.h>
 #include <common/path_utils.hpp>
 
 using namespace filesystem;
 
-void printf(char*);
-void printf_hex(uint8_t);
-void printf_hex16(uint16_t);
-void printf_hex32(uint32_t);
+// void printf(char*);
+// void printf_hex(uint8_t);
+// void printf_hex16(uint16_t);
+// void printf_hex32(uint32_t);
 
 //========---FAT32DirectoryIterator START---========
 
-FAT32DirectoryIterator::FAT32DirectoryIterator(drivers::ATA* disk, BiosParameterBlock32* bpb, uint32_t partition_offset, uint32_t start_cluster)
+FAT32DirectoryIterator::FAT32DirectoryIterator(drivers::Disk* disk, BiosParameterBlock32* bpb, uint32_t partition_offset, uint32_t start_cluster)
 : m_disk(disk), m_bpb(bpb), m_partition_offset(partition_offset), m_entry_index(0), m_start_cluster(start_cluster)
 {
     m_current_cluster = start_cluster;
@@ -147,7 +146,7 @@ void FAT32DirectoryIterator::reset(){
 
 //========---FAT32 START---========
 
-FAT32::FAT32(drivers::ATA* disk, uint32_t partition_offset)
+FAT32::FAT32(drivers::Disk* disk, uint32_t partition_offset)
 : Filesystem(partition_offset), m_disk(disk)
 {}
 
@@ -431,11 +430,19 @@ FSError FAT32::open_directory(const char* path, DirectoryIterator*& iterator){
         }
     }
     
-    iterator = (FAT32DirectoryIterator*)memory_management::MemoryManager::active_memory_manager->malloc(sizeof(FAT32DirectoryIterator));
+    
+// #ifdef KERNEL_BUILD
+    iterator = (FAT32DirectoryIterator*)memory_management::Allocator::active_memory_manager->malloc(sizeof(FAT32DirectoryIterator));
     if(iterator == 0){
         return FSError::OUT_OF_MEMORY;
     }
     new (iterator) FAT32DirectoryIterator(m_disk, &m_bpb, m_partition_offset, entry.first_cluster);
+// #else
+//     iterator = new FAT32DirectoryIterator(m_disk, &m_bpb, m_partition_offset, entry.first_cluster);
+//     if(iterator == 0){
+//         return FSError::OUT_OF_MEMORY;
+//     }
+// #endif
 
     return FSError::SUCCESS;
 }
@@ -521,7 +528,7 @@ FSError FAT32::print_list_directory(void(*printf)(char*), const char* path){
         printf(entry.name);
         if(entry.is_file()){
             printf(" (0x");
-            printf_hex32(entry.size);
+            // printf_hex32(entry.size);
             printf(" bytes) ");
         }
         printf("\n");
@@ -621,7 +628,7 @@ FSError FAT32::zero_cluster(uint32_t cluster){
 uint32_t FAT32::allocate_cluster(){
     uint32_t cluster{};
     const size_t NUM_ENTRIES = m_bpb.table_size*(m_bpb.bytes_per_sector/4);
-    uint8_t* sector = (uint8_t*)memory_management::MemoryManager::active_memory_manager->malloc(m_bpb.bytes_per_sector);
+    uint8_t* sector = (uint8_t*)memory_management::Allocator::active_memory_manager->malloc(m_bpb.bytes_per_sector);
     for(uint32_t cluster = 2; cluster<=NUM_ENTRIES; ++cluster){
         uint32_t fat_sector = cluster / (m_bpb.bytes_per_sector/4);
         uint32_t fat_offset = cluster % (m_bpb.bytes_per_sector/4);
@@ -633,7 +640,7 @@ uint32_t FAT32::allocate_cluster(){
             return cluster;
         }
     }    
-    memory_management::MemoryManager::active_memory_manager->free(sector);
+    memory_management::Allocator::active_memory_manager->free(sector);
     return 0;
 }
 
@@ -644,7 +651,7 @@ FSError FAT32::create_directory_entry(FileEntry& new_entry){
     bool written{false};
     bool need_alloc{false};
     const size_t CLUSTER_SIZE = m_bpb.sectors_per_cluster*m_bpb.bytes_per_sector;
-    uint8_t* cluster_buf = (uint8_t*)memory_management::MemoryManager::active_memory_manager->malloc(CLUSTER_SIZE);
+    uint8_t* cluster_buf = (uint8_t*)memory_management::Allocator::active_memory_manager->malloc(CLUSTER_SIZE);
     while(!written){
         // Read parent cluster for dir entries.
         read_cluster(curr_cluster, cluster_buf, 0, CLUSTER_SIZE);
@@ -734,7 +741,7 @@ FSError FAT32::create_directory_entry(FileEntry& new_entry){
             write_cluster(curr_cluster, cluster_buf, 0, CLUSTER_SIZE);
         }
     }
-    memory_management::MemoryManager::active_memory_manager->free(cluster_buf);
+    memory_management::Allocator::active_memory_manager->free(cluster_buf);
     return err;
 }
 

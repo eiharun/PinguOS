@@ -1,6 +1,6 @@
 #pragma once
 #include <common/types.h>
-#include <drivers/ata.h>
+#include <drivers/disk.h>
 #include <filesystem/filesystem.h>
 
 using namespace common;
@@ -74,7 +74,7 @@ struct LongFileName32{
 
 class FAT32DirectoryIterator: public DirectoryIterator{
 public:
-    FAT32DirectoryIterator(drivers::ATA* disk, BiosParameterBlock32* bpb, uint32_t partition_offset, uint32_t start_cluster);
+    FAT32DirectoryIterator(drivers::Disk* disk, BiosParameterBlock32* bpb, uint32_t partition_offset, uint32_t start_cluster);
     void load_cluster();
     void write_back_cluster();
     FSError next(FileEntry& file) override;
@@ -83,7 +83,7 @@ public:
     void convert_entry(DirectoryEntryFat32* src, FileEntry& dst);
     void reset() override;
 private:
-    drivers::ATA* m_disk;
+    drivers::Disk* m_disk;
     BiosParameterBlock32* m_bpb;
     uint32_t m_partition_offset;
     uint8_t m_cluster_buffer[512 * 8]; 
@@ -96,7 +96,7 @@ private:
 
 class FAT32: public Filesystem{
 public:
-    FAT32(drivers::ATA* disk, uint32_t partition_offset);
+    FAT32(drivers::Disk* disk, uint32_t partition_offset);
     ~FAT32(); 
 
     FSError mount() override;
@@ -130,7 +130,7 @@ private:
     uint32_t allocate_cluster();
     FSError create_directory_entry(FileEntry& new_entry);
 
-    drivers::ATA* m_disk;
+    drivers::Disk* m_disk;
     BiosParameterBlock32 m_bpb;
     uint32_t m_fat_start;
     uint32_t m_data_start;

@@ -6,7 +6,7 @@
 #include <cstring>
 
 
-class MockATA: public drivers::Disk<drivers::ATAError>{
+class MockATA: public drivers::Disk{
 public:
     static const size_t SECTOR_SIZE = 512;
     static constexpr size_t DISK_SIZE = SECTOR_SIZE * 128;
@@ -17,22 +17,22 @@ public:
         std::memset(m_disk.data(), 0, DISK_SIZE);    
     }
 
-    drivers::ATAError identify() override {
-        return drivers::ATAError::SUCCESS;
+    drivers::DiskErr identify() override {
+        return drivers::DiskErr::SUCCESS;
     }
 
-    drivers::ATAError read_28(uint32_t sector, uint8_t* data, size_t count) override {
+    drivers::DiskErr read_28(uint32_t sector, uint8_t* data, size_t count) override {
         std::memcpy(data, &m_disk[sector * SECTOR_SIZE], count);
-        return drivers::ATAError::SUCCESS;
+        return drivers::DiskErr::SUCCESS;
     }
     
-    drivers::ATAError write_28(uint32_t sector, uint8_t* data, size_t count) override {
+    drivers::DiskErr write_28(uint32_t sector, uint8_t* data, size_t count) override {
         std::memcpy(&m_disk[sector * SECTOR_SIZE], data, count);
-        return drivers::ATAError::SUCCESS;
+        return drivers::DiskErr::SUCCESS;
     }
 
-    drivers::ATAError flush() override {
-        return drivers::ATAError::SUCCESS;
+    drivers::DiskErr flush() override {
+        return drivers::DiskErr::SUCCESS;
     }
 
 };

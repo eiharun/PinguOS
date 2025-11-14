@@ -1,3 +1,4 @@
+#include "drivers/disk.h"
 #include <drivers/ata.h>
 
 using namespace drivers;
@@ -19,7 +20,7 @@ m_control_port(port_base + 0x206)
 
 ATA::~ATA(){}
 
-ATAError ATA::identify(){
+DiskErr ATA::identify(){
     /*
     To use the IDENTIFY command, select a target drive by sending 0xA0 for the master drive, or 0xB0 for the slave, to the "drive select" IO port. 
     On the Primary bus, this would be port 0x1F6. 
@@ -45,7 +46,7 @@ ATAError ATA::identify(){
     uint32_t status = m_command_port.read();
     if(status == 0){
         printf("Drive DNE");
-        return ATAError::DNE;
+        return DiskErr::DNE;
     }
     while(((status & 0x80) == 0x80)){
         status = m_command_port.read();
@@ -54,14 +55,14 @@ ATAError ATA::identify(){
     uint32_t lba_hi = m_lba_hi_port.read();
     if((lba_hi != 0) && (lba_mid != 0)){
         printf("Not ATA");
-        return ATAError::NOT_ATA;
+        return DiskErr::NOT_ATA;
     }
     while(((status & 0x08) == 0x08) && ((status & 0x01) == 0x01)){
         status = m_command_port.read();
     }
     if(status & 0x01){
         printf("ERROR");
-        return ATAError::OTHER;
+        return DiskErr::OTHER;
     }
     
     for(uint16_t i=0; i<256; ++i){
@@ -72,14 +73,14 @@ ATAError ATA::identify(){
         printf(foo);
     }
 
-    return ATAError::SUCCESS;
+    return DiskErr::SUCCESS;
 }
 
-ATAError ATA::read_28(uint32_t sector, uint8_t* data, size_t count){
+DiskErr ATA::read_28(uint32_t sector, uint8_t* data, size_t count){
     if(sector & 0xF0000000)
-        return ATAError::INVALID_SECTOR;
+        return DiskErr::INVALID_SECTOR;
     if(count > m_bytes_per_sector)
-        return ATAError::INVALID_SIZE;
+        return DiskErr::INVALID_SIZE;
 
     m_drive_head_port.write((m_master ? 0xE0 : 0xF0) | ((sector & 0x0F000000) >> 24));
     m_err_port.write(0);
@@ -94,7 +95,7 @@ ATAError ATA::read_28(uint32_t sector, uint8_t* data, size_t count){
     uint8_t status = m_command_port.read();
     if(status == 0){
         printf("Drive DNE");
-        return ATAError::DNE;
+        return DiskErr::DNE;
     }
    
     while (status & 0x80)  // wait until BSY clears
@@ -103,14 +104,14 @@ ATAError ATA::read_28(uint32_t sector, uint8_t* data, size_t count){
     while (!(status & 0x08)) {  // wait until DRQ sets
         if (status & 0x01) {    // ERR
             printf("ERROR");
-            return ATAError::OTHER;
+            return DiskErr::OTHER;
         }
         status = m_command_port.read();
     }
 
     if(status & 0x01){
         printf("ERROR");
-        return ATAError::OTHER;
+        return DiskErr::OTHER;
     }
     
     // printf(" Reading from ATA ");
@@ -128,14 +129,14 @@ ATAError ATA::read_28(uint32_t sector, uint8_t* data, size_t count){
     for(uint16_t i=count + (count % 2); i<m_bytes_per_sector; i+=2){
         m_data_port.read();
     }
-    return ATAError::SUCCESS;
+    return DiskErr::SUCCESS;
 }
 
-ATAError ATA::write_28(uint32_t sector, uint8_t* data, size_t count){
+DiskErr ATA::write_28(uint32_t sector, uint8_t* data, size_t count){
     if(sector & 0xF0000000)
-        return ATAError::INVALID_SECTOR;
+        return DiskErr::INVALID_SECTOR;
     if(count > m_bytes_per_sector)
-        return ATAError::INVALID_SIZE;
+        return DiskErr::INVALID_SIZE;
 
     m_drive_head_port.write((m_master ? 0xE0 : 0xF0) | ((sector & 0x0F000000) >> 24));
     m_err_port.write(0);
@@ -161,10 +162,10 @@ ATAError ATA::write_28(uint32_t sector, uint8_t* data, size_t count){
         m_data_port.write(0x0000);
     }
     printf(" Written to ATA ");
-    return ATAError::SUCCESS;
+    return DiskErr::SUCCESS;
 }
 
-ATAError ATA::flush(){
+DiskErr ATA::flush(){
     m_drive_head_port.write(m_master ? 0xE0 : 0xF0);
     m_command_port.write(0xE7);
 
@@ -174,7 +175,7 @@ ATAError ATA::flush(){
     }
     if(status & 0x01){
         printf("ERROR");
-        return ATAError::OTHER;
+        return DiskErr::OTHER;
     }
-    return ATAError::SUCCESS;
+    return DiskErr::SUCCESS;
 }

@@ -6,16 +6,7 @@ using namespace hardware_communication;
 
 namespace drivers {
 
-enum class ATAError{
-    SUCCESS=0,
-    DNE,
-    NOT_ATA,
-    INVALID_SECTOR,
-    INVALID_SIZE,
-    OTHER
-};
-
-class ATA : Disk<ATAError>{
+class ATA : public Disk{
 protected:
     Port16 m_data_port;
     Port8 m_err_port;
@@ -32,10 +23,10 @@ public:
     ATA(uint16_t port_base, bool master);
     ~ATA();
 
-    ATAError identify() override;
-    ATAError read_28(uint32_t sector, uint8_t* data, size_t count) override;
-    ATAError write_28(uint32_t sector, uint8_t* data, size_t count) override;
-    ATAError flush() override;
+    DiskErr identify() override;
+    DiskErr read_28(uint32_t sector, uint8_t* data, size_t count) override;
+    DiskErr write_28(uint32_t sector, uint8_t* data, size_t count) override;
+    DiskErr flush() override;
 };
 
 }

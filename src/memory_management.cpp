@@ -2,9 +2,9 @@
 
 using namespace memory_management;
 
-MemoryManager* MemoryManager::active_memory_manager = 0;
+// #ifdef KERNEL_BUILD
 
-MemoryManager::MemoryManager(uint32_t start, size_t size){
+LinearAllocator::LinearAllocator(uint32_t start, size_t size){
     active_memory_manager = this;
 
     if(size < sizeof(MemoryNode)){
@@ -20,14 +20,14 @@ MemoryManager::MemoryManager(uint32_t start, size_t size){
 
 }
 
-MemoryManager::~MemoryManager(){
+LinearAllocator::~LinearAllocator(){
     if(active_memory_manager == this){
         active_memory_manager = 0;
     }
 }
 
 /* Not a very efficient approach, but it works for now */
-void* MemoryManager::malloc(size_t size, size_t alignment /*=0*/){
+void* LinearAllocator::malloc(size_t size, size_t alignment /*=0*/){
     if(alignment == 0 || alignment == 1) {
         alignment = 1; // treat "no alignment" as byte-aligned
     }
@@ -68,7 +68,7 @@ void* MemoryManager::malloc(size_t size, size_t alignment /*=0*/){
     return (void*)aligned_addr;
 }
 
-void MemoryManager::free(void* ptr){
+void LinearAllocator::free(void* ptr){
     if(ptr == 0) return;
 
     MemoryNode* to_be_freed = (MemoryNode*)((uint32_t)ptr - sizeof(MemoryNode));
@@ -94,38 +94,39 @@ void MemoryManager::free(void* ptr){
 }
 
 void* operator new(size_t size){
-    if(MemoryManager::active_memory_manager == 0){
+    if(Allocator::active_memory_manager == 0){
         return 0;
     }
-    return MemoryManager::active_memory_manager->malloc(size);
+    return Allocator::active_memory_manager->malloc(size);
 }
 void* operator new[](size_t size){
-    if(MemoryManager::active_memory_manager == 0){
+    if(Allocator::active_memory_manager == 0){
         return 0;
     }
-    return MemoryManager::active_memory_manager->malloc(size);
+    return Allocator::active_memory_manager->malloc(size);
 }
-void* operator new(size_t size, void* ptr){
+void* operator new(size_t size, void* ptr) noexcept {
    return ptr;
 }
-void* operator new[](size_t size, void* ptr){
+void* operator new[](size_t size, void* ptr) noexcept {
     return ptr;
 }
 
 void operator delete(void* ptr, uint32_t size){
-    if(MemoryManager::active_memory_manager != 0){
-        MemoryManager::active_memory_manager->free(ptr);
+    if(Allocator::active_memory_manager != 0){
+        Allocator::active_memory_manager->free(ptr);
     }
 }
 void operator delete(void* ptr){
-    if(MemoryManager::active_memory_manager != 0){
-        MemoryManager::active_memory_manager->free(ptr);
+    if(Allocator::active_memory_manager != 0){
+        Allocator::active_memory_manager->free(ptr);
     }
 }
 
 void operator delete[](void* ptr){
-    if(MemoryManager::active_memory_manager != 0){
-        MemoryManager::active_memory_manager->free(ptr);
+    if(Allocator::active_memory_manager != 0){
+        Allocator::active_memory_manager->free(ptr);
     }
 }
 
+// #endif

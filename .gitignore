@@ -2,7 +2,7 @@
 *.o
 *.bin
 *.iso
-build
+**build
 
 .gdb_history
 
@@ -10,6 +10,8 @@ self.md
 
 .vscode
 .clangd
+.cache
+compile_commands.json
 
 # qemu disk image
 *.qcow2

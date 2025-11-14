@@ -37,7 +37,7 @@ Intel_82540EM::Intel_82540EM(PCIDeviceDescriptor* dev, InterruptManager* interru
 }
 
 Intel_82540EM::~Intel_82540EM(){
-    MemoryManager::active_memory_manager->free(this);
+    Allocator::active_memory_manager->free(this);
 }
 
 int Intel_82540EM::enable_bus_mastering(){
@@ -235,14 +235,14 @@ uint32_t Intel_82540EM::handle_interrupt(uint32_t esp){
 }
 
 void Intel_82540EM::rx_setup(){
-    m_rx_ring = (RX_Descriptor*)MemoryManager::active_memory_manager->malloc(RX_RING_SIZE * sizeof(RX_Descriptor), 16);
+    m_rx_ring = (RX_Descriptor*)Allocator::active_memory_manager->malloc(RX_RING_SIZE * sizeof(RX_Descriptor), 16);
     if(!m_rx_ring){
         printf("RX ring alloc failed\n");
         return;
     }
 
     for(int i=0; i<RX_RING_SIZE; ++i){
-        void* buffer = MemoryManager::active_memory_manager->malloc(2048);
+        void* buffer = Allocator::active_memory_manager->malloc(2048);
         if(!buffer){
             printf("RX Buffer alloc failed\n");
             return;
@@ -280,14 +280,14 @@ void Intel_82540EM::rx_setup(){
 }
 
 void Intel_82540EM::tx_setup(){
-    m_tx_ring = (TX_Descriptor*)MemoryManager::active_memory_manager->malloc(TX_RING_SIZE * sizeof(TX_Descriptor), 16);
+    m_tx_ring = (TX_Descriptor*)Allocator::active_memory_manager->malloc(TX_RING_SIZE * sizeof(TX_Descriptor), 16);
     if(!m_tx_ring){
         printf("TX ring alloc failed\n"); 
         return;
     }
 
     for(int i=0; i<TX_RING_SIZE; ++i){
-        void* buffer = MemoryManager::active_memory_manager->malloc(2048);
+        void* buffer = Allocator::active_memory_manager->malloc(2048);
         if(!buffer){
             printf("TX Buffer alloc failed\n");
             return;

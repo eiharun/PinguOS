@@ -1,11 +1,12 @@
-GCCPARAMS = -m32 -g -Iinclude -Itests -ffreestanding -fno-use-cxa-atexit -nostdlib -fno-builtin -fno-rtti -fno-exceptions -fno-leading-underscore -Wno-write-strings
-ASPARAMS = --32
-LDPARAMS = -melf_i386
+GCCPARAMS := -m32 -g -Iinclude -ffreestanding -fno-use-cxa-atexit -nostdlib -fno-builtin -fno-rtti -fno-exceptions -fno-leading-underscore -Wno-write-strings -DKERNEL_BUILD
+ASPARAMS := --32
+LDPARAMS := -melf_i386
 
 BUILD_DIR := build
 SRC_DIR := src
-objects =  	loader gdt \
+objects :=  	loader gdt \
 			memory_management \
+			allocator \
 			hardware_communication/port \
 			hardware_communication/interruptstubs \
 			hardware_communication/interrupts \
@@ -61,9 +62,13 @@ run: $(BUILD_DIR)/pingukernel.iso
 
 
 
-.PHONY: debug kill build clean
+.PHONY: debug kill build clean test
 
 build: $(BUILD_DIR)/pingukernel.iso
+
+test:
+	@mkdir -p build
+	$(MAKE) -C tests BUILD_ROOT=../build all
 
 debug: $(BUILD_DIR)/pingukernel.iso
 	tmux new-session -d -s qemu_debug \

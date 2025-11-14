@@ -1,18 +1,26 @@
 #pragma once
-#include<common/types.h>
+#include <common/types.h>
 
 using namespace common;
 
 namespace drivers {
 
-template <class Err>
+enum class DiskErr{
+    SUCCESS=0,
+    DNE,
+    NOT_ATA,
+    INVALID_SECTOR,
+    INVALID_SIZE,
+    OTHER
+};
+
 class Disk {
     /* ==== Working Disk Abstract Class ==== */
     public:
-    virtual Err identify() = 0;
-    virtual Err read_28(uint32_t sector, uint8_t* data, size_t count) = 0;
-    virtual Err write_28(uint32_t sector, uint8_t* data, size_t count) = 0;
-    virtual Err flush() = 0;
+    virtual DiskErr identify() = 0;
+    virtual DiskErr read_28(uint32_t sector, uint8_t* data, size_t count) = 0;
+    virtual DiskErr write_28(uint32_t sector, uint8_t* data, size_t count) = 0;
+    virtual DiskErr flush() = 0;
 };
 
 }
