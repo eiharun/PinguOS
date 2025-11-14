@@ -1,11 +1,12 @@
 #pragma once
+#include <drivers/disk.h>
 #include <hardware_communication/port.h>
 
 using namespace hardware_communication;
 
 namespace drivers {
 
-enum class ATA_ERR_CODES{
+enum class ATAError{
     SUCCESS=0,
     DNE,
     NOT_ATA,
@@ -14,7 +15,7 @@ enum class ATA_ERR_CODES{
     OTHER
 };
 
-class ATA {
+class ATA : Disk<ATAError>{
 protected:
     Port16 m_data_port;
     Port8 m_err_port;
@@ -31,10 +32,10 @@ public:
     ATA(uint16_t port_base, bool master);
     ~ATA();
 
-    ATA_ERR_CODES identify();
-    ATA_ERR_CODES read_28(uint32_t sector, uint8_t* data, size_t count);
-    ATA_ERR_CODES write_28(uint32_t sector, uint8_t* data, size_t count);
-    ATA_ERR_CODES flush();
+    ATAError identify() override;
+    ATAError read_28(uint32_t sector, uint8_t* data, size_t count) override;
+    ATAError write_28(uint32_t sector, uint8_t* data, size_t count) override;
+    ATAError flush() override;
 };
 
 }

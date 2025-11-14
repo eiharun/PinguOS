@@ -1,4 +1,4 @@
-#include "gdt.h"
+#include <gdt.h>
 
 // Fail compilation if not 32-bit mode
 #if __SIZEOF_POINTER__ != 4

@@ -1,4 +1,4 @@
-GCCPARAMS = -m32 -g -Iinclude -ffreestanding -fno-use-cxa-atexit -nostdlib -fno-builtin -fno-rtti -fno-exceptions -fno-leading-underscore -Wno-write-strings
+GCCPARAMS = -m32 -g -Iinclude -Itests -ffreestanding -fno-use-cxa-atexit -nostdlib -fno-builtin -fno-rtti -fno-exceptions -fno-leading-underscore -Wno-write-strings
 ASPARAMS = --32
 LDPARAMS = -melf_i386
 
@@ -63,7 +63,7 @@ run: $(BUILD_DIR)/pingukernel.iso
 
 .PHONY: debug kill build clean
 
-build: $(BUILD_DIR)/pingukernel.bin
+build: $(BUILD_DIR)/pingukernel.iso
 
 debug: $(BUILD_DIR)/pingukernel.iso
 	tmux new-session -d -s qemu_debug \
@@ -71,6 +71,8 @@ debug: $(BUILD_DIR)/pingukernel.iso
 		split-window -h "sleep 2; gdb -ex 'target remote :1234' -ex 'set architecture i386' -ex 'file $(BUILD_DIR)/pingukernel.bin' " \; \
 		select-pane -t 0 \; \
 		attach
+
+# make debug & attach targets for manual debug sessions
 
 kill:
 	tmux kill-session -t qemu_debug 2>/dev/null || echo "No session 'qemu_debug' found"
