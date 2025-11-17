@@ -2,7 +2,7 @@ GCCPARAMS := -m32 -g -Iinclude -ffreestanding -fno-use-cxa-atexit -nostdlib -fno
 ASPARAMS := --32
 LDPARAMS := -melf_i386
 
-BUILD_DIR := build
+BUILD_DIR := build/rel
 SRC_DIR := src
 objects :=  	loader gdt \
 			memory_management \
@@ -19,25 +19,22 @@ objects :=  	loader gdt \
 			syscalls \
 			multitask \
 			kernel
-OBJS := $(objects:%=$(BUILD_DIR)/%.o)
+OBJS := $(objects:%=$(BUILD_DIR)/obj/%.o)
 
-# mkdir_build:
-# 	mkdir -p $(BUILD_DIR)
 
-# $(OBJS): mkdir_build
-
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
+$(BUILD_DIR)/obj/%.o: $(SRC_DIR)/%.cpp
 	mkdir -p $(@D)
 	gcc $(GCCPARAMS) -c -o $@ $<
 
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.s 
+$(BUILD_DIR)/obj/%.o: $(SRC_DIR)/%.s 
 	mkdir -p $(@D)
 	as $(ASPARAMS) -o $@ $<
 
-$(BUILD_DIR)/pingukernel.bin: linker.ld $(OBJS) 
+$(BUILD_DIR)/bin/pingukernel.bin: linker.ld $(OBJS) 
+	mkdir -p $(@D)
 	ld $(LDPARAMS) -T $< -o $@ $(OBJS)
 
-$(BUILD_DIR)/pingukernel.iso: $(BUILD_DIR)/pingukernel.bin
+$(BUILD_DIR)/pingukernel.iso: $(BUILD_DIR)/bin/pingukernel.bin
 	mkdir -p $(BUILD_DIR)/iso
 	mkdir -p $(BUILD_DIR)/iso/boot
 	cp $< $(BUILD_DIR)/iso/boot/pingukernel.bin
