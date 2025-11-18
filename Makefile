@@ -67,6 +67,8 @@ test:
 	@mkdir -p build
 	$(MAKE) -C tests BUILD_ROOT=../build all
 
+
+
 debug: $(BUILD_DIR)/pingukernel.iso
 	tmux new-session -d -s qemu_debug \
 		"qemu-system-i386 -s -S -drive format=raw,file=$(BUILD_DIR)/pingukernel.iso -drive file=disk.img,format=raw,if=ide" \; \

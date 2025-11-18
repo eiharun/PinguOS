@@ -1,4 +1,5 @@
 #include "include/host_alloc.h"
+#include <memory>
 
 HostAllocator memory_manager;
 
@@ -7,11 +8,17 @@ HostAllocator::HostAllocator(){
 }
 
 void* HostAllocator::malloc(size_t size, size_t alignment)  {
-    return std::malloc(size == 0 ? 1 : size);
+    size = (size == 0 ? 1 : size);
+    auto ptr = std::make_unique<uint8_t[]>(size);
+    void* raw_ptr = ptr.get();
+    allocations[raw_ptr] = std::move(ptr);
+    return raw_ptr;
+    // return std::malloc(size == 0 ? 1 : size);
 }
 
 void HostAllocator::free(void* ptr) {
-    std::free(ptr);
+    allocations.erase(ptr);
+    // std::free(ptr);
 }
 
 // void* operator new(size_t size){
@@ -26,12 +33,12 @@ void HostAllocator::free(void* ptr) {
 //     }
 //     return Allocator::active_memory_manager->malloc(size);
 // }
-void* operator new(size_t size, void* ptr) noexcept {
-   return ptr;
-}
-void* operator new[](size_t size, void* ptr) noexcept {
-    return ptr;
-}
+// void* operator new(size_t size, void* ptr) noexcept {
+//    return ptr;
+// }
+// void* operator new[](size_t size, void* ptr) noexcept {
+//     return ptr;
+// }
 
 // void operator delete(void* ptr, size_t size){
 //     if(Allocator::active_memory_manager != 0){

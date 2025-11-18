@@ -9,12 +9,15 @@
 class MockATA: public drivers::Disk{
 public:
     static const size_t SECTOR_SIZE = 512;
-    static constexpr size_t DISK_SIZE = SECTOR_SIZE * 128;
-    std::vector<uint8_t> m_disk;
+    size_t m_sector_count;
+    size_t DISK_SIZE = SECTOR_SIZE * m_sector_count;
+    std::vector<uint8_t> m_data;
 
-    MockATA(){
-        m_disk.resize(DISK_SIZE);
-        std::memset(m_disk.data(), 0, DISK_SIZE);    
+    MockATA() = default;
+
+    MockATA(size_t sector_count): m_sector_count(sector_count){
+        m_data.resize(DISK_SIZE);
+        std::memset(m_data.data(), 0, DISK_SIZE);    
     }
 
     drivers::DiskErr identify() override {
@@ -22,12 +25,25 @@ public:
     }
 
     drivers::DiskErr read_28(uint32_t sector, uint8_t* data, size_t count) override {
-        std::memcpy(data, &m_disk[sector * SECTOR_SIZE], count);
+        if(count > SECTOR_SIZE)
+            return drivers::DiskErr::INVALID_SIZE;
+        if((sector * SECTOR_SIZE) + count >= DISK_SIZE){
+            count = (sector * SECTOR_SIZE) - DISK_SIZE; //Do not overread a sector
+        }
+        std::memcpy(data, &m_data[sector * SECTOR_SIZE], count);
+        
         return drivers::DiskErr::SUCCESS;
     }
     
     drivers::DiskErr write_28(uint32_t sector, uint8_t* data, size_t count) override {
-        std::memcpy(&m_disk[sector * SECTOR_SIZE], data, count);
+        if(count > SECTOR_SIZE)
+            return drivers::DiskErr::INVALID_SIZE;
+        if((sector * SECTOR_SIZE) + count >= DISK_SIZE){
+            return drivers::DiskErr::NO_SPACE;
+        }
+        std::memcpy(&m_data[sector * SECTOR_SIZE], data, count);
+        // Fill remaining unwritten sector with 0
+        std::memset(&m_data[(sector * SECTOR_SIZE)+count],0 ,SECTOR_SIZE-count);
         return drivers::DiskErr::SUCCESS;
     }
 

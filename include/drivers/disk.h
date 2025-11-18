@@ -11,6 +11,7 @@ enum class DiskErr{
     NOT_ATA,
     INVALID_SECTOR,
     INVALID_SIZE,
+    NO_SPACE,
     OTHER
 };
 
