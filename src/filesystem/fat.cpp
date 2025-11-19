@@ -118,16 +118,12 @@ void FAT32DirectoryIterator::delete_dir_entry(){
 
 void FAT32DirectoryIterator::convert_entry(DirectoryEntryFat32* src, FileEntry& dst){
     int name_len{};
-    for(int i=0; i<8 && src->name[i]!=' '; ++i){ // Padded with spaces
+    for(int i=0; i<NAME_SIZE_8_3; ++i){ // Padded with spaces
+        if(i==8) dst.name[name_len++] = '.';
+        if(src->name[i] == ' ') continue;
         dst.name[name_len++] = src->name[i];
     }
 
-    if(src->ext[0]!=' '){
-        dst.name[name_len++] = '.';
-        for(int i=0; i<3 && src->ext[i]!=' '; ++i){
-            dst.name[name_len++] = src->ext[i];
-        }
-    }
     dst.name[name_len] = '\0';
     dst.size = src->size;
     dst.attributes = src->attributes;
@@ -316,6 +312,9 @@ FSError FAT32::make_file(const char* path, const char* filename){
     }
     else{
         FSError err = stat(path, entry);
+        if(err != FSError::SUCCESS){
+            return err;
+        }
         parent_cluster = entry.parent_cluster;
     }
     // Allocate cluster & update FAT
@@ -324,11 +323,12 @@ FSError FAT32::make_file(const char* path, const char* filename){
         return FSError::DISK_FULL;
     }
     // Clear cluster (0)
-    zero_cluster(file_cluster); //FIXME: Is zeroing necesarry?
+    // zero_cluster(file_cluster); //FIXME: Is zeroing necesarry?
     // Add dir entry to parent directory
     FileEntry new_file_entry;
     int name_len{};
     for(int i=0; filename[i]!='\0'; ++i){
+        if(filename[i] == '.') continue;
         new_file_entry.name[name_len++] = filename[i];
     }
     new_file_entry.name[name_len] = '\0';
@@ -561,7 +561,7 @@ FSError FAT32::read_cluster(uint32_t cluster, uint8_t* buffer, uint32_t offset, 
         m_disk->read_28(start_sector, buffer + bytes_read, num_bytes);
 
         bytes_read += num_bytes;
-        size -= bytes_read;
+        size -= num_bytes;
         start_sector++;
         sector_offset = 0;
     }
@@ -590,7 +590,7 @@ FSError FAT32::write_cluster(uint32_t cluster, uint8_t* buffer, uint32_t offset,
         m_disk->write_28(start_sector, buffer + bytes_written, num_bytes);
 
         bytes_written += num_bytes;
-        size -= bytes_written;
+        size -= num_bytes;
         start_sector++;
         sector_offset = 0;
     }
@@ -652,6 +652,9 @@ FSError FAT32::create_directory_entry(FileEntry& new_entry){
     bool need_alloc{false};
     const size_t CLUSTER_SIZE = m_bpb.sectors_per_cluster*m_bpb.bytes_per_sector;
     uint8_t* cluster_buf = (uint8_t*)memory_management::Allocator::active_memory_manager->malloc(CLUSTER_SIZE);
+    if(cluster_buf == 0){
+        return FSError::OUT_OF_MEMORY;
+    }
     while(!written){
         // Read parent cluster for dir entries.
         read_cluster(curr_cluster, cluster_buf, 0, CLUSTER_SIZE);
@@ -663,40 +666,32 @@ FSError FAT32::create_directory_entry(FileEntry& new_entry){
             if((entries[i].name[0] == ENTRY_END) || (entries[i].name[0] == ENTRY_DELETED)){
                 //Write to entries[i]
                 // Copy 8.3 standard name 
-                bool dot{false};
-                int name_len{};
-                int ext_len{};
-                for(int s=0; new_entry.name[s]!='\0'; ++s){
-                    if(new_entry.name[s] == '.'){
-                        dot = true;
-                    }
-                    if(!dot){
-                        // Copy name
-                        if(s<=8){
-                            entries[i].name[s] = new_entry.name[s];
-                            name_len++;
-                        }
-                    }
-                    else{
-                        // Pad name if necesarry
-                        if(name_len < 8){
-                            for(int j=name_len; j<8; ++j){
-                                entries[i].name[j] = ' ';
-                            }
-                            name_len = 8;
-                        }
-                        // Copy ext
-                        if(entries[i].name[s] != '.'){
-                            entries[i].ext[s] = new_entry.name[s];
-                            ext_len++;
-                        }
-                    }
+                size_t filename_size = PathUtils::strlen(new_entry.name);
+                int name_size{};
+                int ext_size{};
+                int dot_idx = PathUtils::get_index(new_entry.name, '.');
+                if(dot_idx == -1){
+                    name_size = filename_size;
+                    if(name_size > 8) name_size = 8;
+                    ext_size = 0;
                 }
-                // Pad ext if necesarry
-                if(ext_len<3){
-                    for(int j=ext_len; j<3; ++j){
-                        entries[i].ext[j] = ' ';
-                    }
+                else{
+                    name_size = dot_idx;
+                    if(name_size > 8) name_size = 8;
+                    ext_size = filename_size - dot_idx;
+                    if(ext_size > 3) ext_size = 3;
+                }
+                // Fill with ' ' padding
+                for(int s=0; s<11; ++s){
+                    entries[i].name[s] = ' ';
+                }
+                // Name
+                for(int s=0; s < name_size; ++s){
+                    entries[i].name[s] = new_entry.name[s];
+                }
+                // Ext
+                for(int s=0; s < ext_size; ++s){
+                    entries[i].name[NAME_SIZE_8_3 - ext_size + s] = new_entry.name[dot_idx + 1 + s];
                 }
 
                 entries[i].attributes = new_entry.attributes;
