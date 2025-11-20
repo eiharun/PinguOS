@@ -23,10 +23,12 @@ if [[ "$1" == "--help" || "$1" == "-h" ]]; then
     exit 0
 fi
 
+make -C "$ROOT_DIR/.." test
+echo "Finished building tests"
+
 if [ ! -f "$BIN" ]; then
   echo "Error: Test binary not found at $BIN.. Building"
-  make -C "$ROOT_DIR/.." test
-  echo "Finished building tests"
+#   make -C "$ROOT_DIR/.." test
 fi
 if [ $# -eq 0 ]; then
     # Run all

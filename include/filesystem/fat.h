@@ -45,8 +45,7 @@ struct BiosParameterBlock32{
 #define NAME_SIZE_8_3 11
 
 struct DirectoryEntryFat32{
-    uint8_t name[8];
-    uint8_t ext[3];
+    uint8_t name[11];
     uint8_t attributes;
     uint8_t reserved;
     uint8_t c_tenth_time;

@@ -2,6 +2,7 @@
 #include <filesystem/fat.h>
 #include <allocator.h>
 #include <common/path_utils.hpp>
+#include <system_error>
 
 using namespace filesystem;
 
@@ -223,9 +224,52 @@ FSError FAT32::write(FileHandle& handle, uint8_t* buffer, size_t size, WRITE_MOD
     switch(mode){
     case WRITE_MODE::APPEND:{
         // Shift *size* number of bytes *size* bytes at handle.position in cluster and following clusters
+        // update handle.size
+        return FSError::NOT_IMPLEMENTED;
     } break;
     case WRITE_MODE::WRITE:{
-        // Overwrite at handle.position
+        // Overwrite at handle.position, update handle.size if needed
+        const size_t bytes_per_cluster = m_bpb.sectors_per_cluster*m_bpb.bytes_per_sector;
+        uint32_t space_left_in_cluster = bytes_per_cluster - (handle.position % bytes_per_cluster) ;
+        uint32_t clusterchain_index = handle.position / bytes_per_cluster;
+        bool new_cluster{false};
+        if(space_left_in_cluster < size){
+            // allocate and link new cluster
+            new_cluster = true;
+        }
+        // Write "space_left_in_cluster" or "size" bytes to current cluster at position
+        uint32_t bytes_written{};
+        size_t bytes_to_write = (space_left_in_cluster < size) ? space_left_in_cluster : size;
+        FSError err = write_cluster(handle.cluster, buffer, handle.position, bytes_to_write);
+        if(err != FSError::SUCCESS){
+            return err;
+        }
+        handle.position += bytes_to_write;
+        bytes_written += bytes_to_write;
+        size -= bytes_to_write;
+        handle.size += bytes_to_write; 
+        if(new_cluster){
+            while(size>0){
+                // Allocate and link
+                uint32_t new_cluster = allocate_cluster();
+                if(new_cluster == 0){
+                    return FSError::DISK_FULL;
+                }
+                link_next_cluster(handle.cluster, new_cluster);
+                handle.cluster = new_cluster;
+                // if a new cluster was allocated, fill it with the remaining bytes
+                bytes_to_write = (bytes_per_cluster < size) ? bytes_per_cluster : size;
+                err = write_cluster(handle.cluster, buffer+bytes_written, 0, bytes_to_write);
+                if(err != FSError::SUCCESS){
+                    return err;
+                }
+                handle.position += bytes_to_write;
+                bytes_written += bytes_to_write;
+                size -= bytes_to_write;
+                handle.size += bytes_to_write; 
+                // if new cluster gets full, loop back again and allocate new cluster and repeat 
+            }
+        }       
     } break;
     }
 
@@ -305,6 +349,13 @@ void FAT32::close(FileHandle& handle){
 
 FSError FAT32::make_file(const char* path, const char* filename){
     // TODO: Disallow duplicate files in same dir
+    FileEntry exist_entry;
+    char full_path[MAX_PATH_LEN]{};
+    // Combine path and filename
+    PathUtils::merge_path(path, filename, full_path);
+    if(stat(full_path, exist_entry) == FSError::SUCCESS){
+        return FSError::ALREADY_EXISTS;
+    }
     FileEntry entry;
     uint32_t parent_cluster;
     if(PathUtils::strcmp(path, "/")){
@@ -328,7 +379,6 @@ FSError FAT32::make_file(const char* path, const char* filename){
     FileEntry new_file_entry;
     int name_len{};
     for(int i=0; filename[i]!='\0'; ++i){
-        if(filename[i] == '.') continue;
         new_file_entry.name[name_len++] = filename[i];
     }
     new_file_entry.name[name_len] = '\0';
@@ -586,8 +636,22 @@ FSError FAT32::write_cluster(uint32_t cluster, uint8_t* buffer, uint32_t offset,
         if(num_bytes > size){
             num_bytes = size;
         }
-
-        m_disk->write_28(start_sector, buffer + bytes_written, num_bytes);
+        if(sector_offset > 0){
+            // Read sector, append at sector offset, write back
+            uint8_t* sector_buf = (uint8_t*)memory_management::Allocator::active_memory_manager->malloc(m_bpb.bytes_per_sector);
+            if(sector_buf == 0){
+                return FSError::OUT_OF_MEMORY;
+            }
+            m_disk->read_28(start_sector, sector_buf, sector_offset);
+            for(int i = 0; i<num_bytes; ++i){
+                sector_buf[i+sector_offset] = buffer[i];
+            }
+            m_disk->write_28(start_sector, sector_buf, sector_offset+num_bytes);
+            memory_management::Allocator::active_memory_manager->free(sector_buf);
+        }
+        else{
+            m_disk->write_28(start_sector, buffer + bytes_written, num_bytes);
+        }
 
         bytes_written += num_bytes;
         size -= num_bytes;
@@ -613,7 +677,7 @@ void FAT32::link_next_cluster(uint32_t current_cluster, uint32_t next_cluster){
     m_disk->read_28(m_fat_start + fat_sector, m_sector_buf, m_bpb.bytes_per_sector);
     ((uint32_t*)m_sector_buf)[fat_offset] = next_cluster;
     m_disk->write_28(m_fat_start + fat_sector, m_sector_buf, m_bpb.bytes_per_sector);
-    zero_cluster(next_cluster); //FIXME: Is this necesarry?
+    // zero_cluster(next_cluster); //FIXME: Is this necesarry?
 }
 
 FSError FAT32::zero_cluster(uint32_t cluster){

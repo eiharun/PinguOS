@@ -1,11 +1,88 @@
+#include <cstddef>
+#include <cstdlib>
 #include <gtest/gtest.h>
 
 #include <filesystem/fat.h>
 #include <allocator.h>
 #include <memory>
+#include "filesystem/filesystem.h"
 #include "mock_ata.hpp"
 
 using namespace filesystem;
+
+#define ASSERT_SUCCESS(item) ASSERT_EQ(item, FSError::SUCCESS)
+#define ASSERT_FAIL(item) ASSERT_NE(item, FSError::SUCCESS)
+
+namespace filesystem{
+std::ostream& operator<<(std::ostream& os, const FSError& status) {
+    switch (status) {
+        case FSError::SUCCESS: {
+            os << "FSError::SUCCESS\n";
+            break;
+        }
+        case FSError::NOT_FOUND: {
+            os << "FSError:NOT_FOUND:\n";
+            break;
+        }
+        case FSError::INVALID_PATH: {
+            os << "FSError::INVALID_PATH\n";
+            break;
+        }
+        case FSError::NOT_A_DIRECTORY: {
+            os << "FSError::NOT_A_DIRECTORY\n";
+            break;
+        }
+        case FSError::NOT_A_FILE: {
+            os << "FSError::NOT_A_FILE\n";
+            break;
+        }
+        case FSError::END_OF_DIRECTORY: {
+            os << "FSError::END_OF_DIRECTORY\n";
+            break;
+        }
+        case FSError::READ_ERROR: {
+            os << "FSError::READ_ERROR\n";
+            break;
+        }
+        case FSError::DISK_ERROR: {
+            os << "FSError::DISK_ERROR\n";
+            break;
+        }
+        case FSError::INVALID_FILESYSTEM: {
+            os << "FSError::INVALID_FILESYSTEM\n";
+            break;
+        }
+        case FSError::BUFFER_TOO_SMALL: {
+            os << "FSError::BUFFER_TOO_SMALL\n";
+            break;
+        }
+        case FSError::OUT_OF_MEMORY: {
+            os << "FSError::OUT_OF_MEMORY\n";
+            break;
+        }
+        case FSError::ALREADY_EXISTS: {
+            os << "FSError::ALREADY_EXISTS\n";
+            break;
+        }
+        case FSError::DISK_FULL: {
+            os << "FSError:DISK_FULL:\n";
+            break;
+        }
+        case FSError::END_OF_CHAIN: {
+            os << "FSError::END_OF_CHAIN\n";
+            break;
+        }
+        case FSError::NOT_IMPLEMENTED: {
+            os << "FSError::NOT_IMPLEMENTED\n";
+            break;
+        }
+        default:
+            os << "Unknown Status Value (" << static_cast<int>(status) << ")";
+            break;
+    }
+    return os;
+}
+}
 
 struct DiskSetup{
     static MockATA make_disk(size_t sector_count){
@@ -31,28 +108,28 @@ struct DiskSetup{
         // FAT table 1
         // Therefore cluster 2 = sector 33
         // -------------------------------------------------------
-        uint32_t root_sector = fat_sector + bpb.fat_copies * bpb.table_size;
+        uint32_t data_root_sector = fat_sector + bpb.fat_copies * bpb.table_size;
 
         // Create a short-name entry: "FILE    TXT"
         DirectoryEntryFat32 f1;
-        uint8_t name[9] = "FILE    ";   // PAD back name with spaces
-        uint8_t ext[4] = "TXT";         // PAD front ext with spaces
-        for(int i=0; i<8;++i){
+        char file_data[256] {"This is a mock file in MOCK ATA driver. TEST ME!!!\n"};
+        uint8_t name[12] = "FILE    TXT";   // PAD back name with spaces
+        for(int i=0; i<11;++i){
             f1.name[i] = name[i];
         }
-        for(int i=0; i<3;++i){
-            f1.ext[i] = ext[i];
-        }
         f1.attributes = 0x20;       // archive attribute
-        
+
         // starting cluster = 3
         f1.first_cluster_hi = 0x0000;
         f1.first_cluster_lo = 0x0003;
-        f1.size = 0;
+        f1.size = std::strlen(file_data);
         DirectoryEntryFat32 end;
         end.name[0] = 0x00; // end-of-directory entry
         DirectoryEntryFat32 entries[2] {f1, end};
-        disk.write_28(root_sector, (uint8_t*)entries, 2*sizeof(DirectoryEntryFat32));
+        disk.write_28(data_root_sector, (uint8_t*)entries, 2*sizeof(DirectoryEntryFat32));
+        // Fill file contents
+        uint32_t data_file_sector = data_root_sector + (3-2)*bpb.sectors_per_cluster;
+        disk.write_28(data_file_sector, (uint8_t*)file_data, std::strlen(file_data));
         return disk;
     }
 
@@ -101,8 +178,6 @@ struct DiskSetup{
         return bpb;
     }
 
-    static bool add_file(){}
-    static bool add_dir(){}
 };
 
 class FAT32_GA: public testing::Test {
@@ -110,31 +185,25 @@ protected:
     FAT32_GA() = default;
     static void SetUpTestSuite() {
         std::cout << "Initializing Mock ATA Disk\n";
-        disk = std::make_unique<MockATA>(DiskSetup::make_disk(128));
+        disk = std::make_unique<MockATA>(DiskSetup::make_disk(1024));
+        fs = std::make_unique<FAT32>(disk.get(), 0);
+        ASSERT_EQ(fs->mount(), FSError::SUCCESS);
     };
 
     static std::unique_ptr<MockATA> disk;
+    static std::unique_ptr<FAT32> fs;
 };
 std::unique_ptr<MockATA> FAT32_GA::disk;
+std::unique_ptr<FAT32> FAT32_GA::fs;
 
-// TEST_F(FAT32_GA, TestMockATAFixture){
-
-// }
 
 TEST_F(FAT32_GA, OpenRootPrintAndClose)
 {
     // -------------------------------------------------------
-    // Mount FAT32
-    // -------------------------------------------------------
-    FAT32 fs(disk.get(), /*partition_offset=*/0);
-
-    ASSERT_EQ(fs.mount(), FSError::SUCCESS);
-
-    // -------------------------------------------------------
     // Open directory "/"
     // -------------------------------------------------------
     DirectoryIterator* it = nullptr;
-    ASSERT_EQ(fs.open_directory("/", it), FSError::SUCCESS);
+    ASSERT_EQ(fs->open_directory("/", it), FSError::SUCCESS);
     ASSERT_NE(it, nullptr);
 
     // -------------------------------------------------------
@@ -155,9 +224,143 @@ TEST_F(FAT32_GA, OpenRootPrintAndClose)
     }
 
     EXPECT_TRUE(saw_file);
-
+    
     // -------------------------------------------------------
     // Clean up
     // -------------------------------------------------------
-    fs.close_directory(it);
+    fs->close_directory(it);
 }
+
+TEST_F(FAT32_GA, TestMakeFile){
+    // make_file must be successful
+    ASSERT_SUCCESS(fs->make_file("/", "NEW_FILE.TXT"));
+    // ASSERT_EQ(fs->make_file("/", "NEW_FILE.TXT"), FSError::SUCCESS);
+    DirectoryIterator* it = nullptr;
+    ASSERT_EQ(fs->open_directory("/", it), FSError::SUCCESS);
+    ASSERT_NE(it, nullptr);
+    
+    FileEntry e;
+    bool saw_file = false;
+
+    while (it->next(e) == FSError::SUCCESS)
+    {
+        printf("Name: %s  FirstCluster: %u  Attr: 0x%X\n",
+               e.name,
+               e.first_cluster,
+               e.attributes);
+
+        if (strncmp(e.name, "NEW_FILE.TXT", 8) == 0)
+            saw_file = true;
+    }
+    EXPECT_TRUE(saw_file);
+
+    fs->close_directory(it);
+}
+
+TEST_F(FAT32_GA, TestMakeFileBadPath){
+    ASSERT_FAIL(fs->make_file("/incorrect", "NEW_FILE.TXT"));
+    ASSERT_FAIL(fs->make_file("incorrect", "NEW_FILE.TXT"));
+}
+
+TEST_F(FAT32_GA, TestMakeFileLongName){
+    ASSERT_SUCCESS(fs->make_file("/", "LONGFILENAME.TXT"));
+    DirectoryIterator* it = nullptr;
+    ASSERT_EQ(fs->open_directory("/", it), FSError::SUCCESS);
+    ASSERT_NE(it, nullptr);
+    
+    FileEntry e;
+    bool saw_file = false;
+
+    while (it->next(e) == FSError::SUCCESS)
+    {
+        printf("Name: %s  FirstCluster: %u  Attr: 0x%X\n",
+               e.name,
+               e.first_cluster,
+               e.attributes);
+
+        if (strncmp(e.name, "LONGFILE.TXT", 11) == 0)
+            saw_file = true;
+    }
+    EXPECT_TRUE(saw_file);
+
+    fs->close_directory(it);
+}
+
+TEST_F(FAT32_GA, TestMakeFileDuplicateFile){
+    ASSERT_EQ(fs->make_file("/", "FILE.TXT"), FSError::ALREADY_EXISTS);
+}
+
+
+TEST_F(FAT32_GA, TestOpenAndReadFile){
+    FileHandle handle;
+    ASSERT_SUCCESS(fs->open("/FILE.TXT", handle));
+    EXPECT_TRUE(handle.valid);
+    uint8_t buf[256]{};
+    uint32_t bytes_read{};
+    EXPECT_EQ(handle.size, 51);
+    ASSERT_SUCCESS(fs->read(handle,buf, handle.size, bytes_read));
+    printf((char*)buf);
+    EXPECT_EQ(bytes_read, 51);
+}
+
+TEST_F(FAT32_GA, TestWriteLongFile){
+    FileHandle handle;
+    ASSERT_SUCCESS(fs->open("/LONGFILE.TXT", handle));
+    EXPECT_TRUE(handle.valid);
+    uint32_t old_size = handle.size;
+
+    constexpr size_t BUF_SIZE = 512*18; // 3 clusters long
+    uint8_t buf[BUF_SIZE]{""};
+    for(size_t i=0; i<BUF_SIZE-100; i++){
+        buf[i] = (i % 126) + 32;
+    }
+    ASSERT_EQ(std::strlen((char*)buf), BUF_SIZE-100);
+    ASSERT_SUCCESS(fs->write(handle, buf, BUF_SIZE-100, filesystem::Filesystem::WRITE));
+    EXPECT_GT(handle.size, old_size);
+
+    // Reset handle position 
+    // (would normally do this with seek(), but since it hasn't been tested yet, 
+    // this is enough to point to the start of the file)
+    handle.position = 0;
+    handle.cluster = handle.start_cluster;
+
+    uint8_t read_buf[BUF_SIZE]{};
+    size_t bytes_read{};
+    ASSERT_SUCCESS(fs->read(handle, read_buf, BUF_SIZE-100, bytes_read));
+    EXPECT_EQ(std::strlen((char*)read_buf), BUF_SIZE-100);
+    ASSERT_NE(read_buf[0], '\0');
+    for(int i=0; i<BUF_SIZE-100; ++i){
+        EXPECT_EQ(read_buf[i], buf[i]);
+    }
+
+}
+
+TEST_F(FAT32_GA, TestSeek){
+    // Verify file contents 
+}
+
+TEST_F(FAT32_GA, TestWriteAppendToLongFileEnd){
+    GTEST_SKIP();
+}
+
+TEST_F(FAT32_GA, TestWriteAppendToLongFileMiddle){
+    GTEST_SKIP();
+}
+
+/*
+Tests list
+FAT32::open - use correct path, use nonexistent path x2
+FAT32::write - ensure correct write, use size 0, test write and append mode. Write with multiple clusters
+FAT32::read - ensure correct read, verify bytes read, give incorrect/invalid file handle. Read with multiple clusters
+FAT32::seek - ensure correct seek position across multiple clusters
+FAT32::close - ensure file handle is invalid
+FAT32::make_file - ensure new dir entry is created, give a non root path(should be error), give a file name longer than 8 char
+FAT32::delete_file - ensure dir entry is marked as deleted
+FAT32::make_directory/delete_directory - same as file
+FAT32::open_directory - ensure iterator is not nullptr, use incorrect/nonexistent path
+FAT32::close_directory - use count free / count malloc in host_alloc.h/cpp, try with nonalloced iterator/nullptr
+FAT32::stat - use incorrect path/non root path
+FAT32::exists - use files and dirs, include files that have been deleted
+
+FAT32DirectoryIterator - create multiple directories and files and build file that is spread across clusters
+*/

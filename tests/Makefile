@@ -1,4 +1,4 @@
-CXXFLAGS := -m32 -g -std=c++17 -Wall -Wextra -O2 -Itests/include -I../include  -I./googletest/googletest/include
+CXXFLAGS := -m32 -g -std=c++17 -Wall -Wextra -Itests/include -I../include  -I./googletest/googletest/include
 
 BUILD_ROOT ?= ../build
 

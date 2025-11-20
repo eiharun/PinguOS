@@ -66,6 +66,16 @@ public:
         return true;
     }
     
+    static int get_index(const char* src, char target){
+        int i{};
+        int dot_index = -1;
+        while (src[i] != '\0') {
+            if (src[i] == target) dot_index = i;
+            i++;
+        }
+        return dot_index;
+    }
+
     static bool split_filename_ext(const char* filename, char* components[2]){
         bool split{false};
         int len_name{};
@@ -92,6 +102,20 @@ public:
     static bool match_filename(const char* filename, const char* pattern) {
         // Simple exact match for now
         return strcmp(filename, pattern);
+    }
+
+    static void merge_path(const char* first, const char* second, char* dest){
+        int len{};
+        for(int i=0; first[i]!='\0'; ++i){
+            dest[len++]=first[i];
+        }
+        if(dest[len-1] != '/'){
+            dest[len++] = '/';
+        }
+        for(int s=0; second[s]!='\0'; s++){
+            dest[len++]=second[s];
+        }
+        dest[len] = '\0';
     }
 };
 

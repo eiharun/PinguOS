@@ -5,6 +5,8 @@ using namespace common;
 
 namespace filesystem{
 
+#define MAX_PATH_LEN 4096
+
 enum class FSError{
     SUCCESS = 0,
     NOT_FOUND,
@@ -17,8 +19,10 @@ enum class FSError{
     INVALID_FILESYSTEM,
     BUFFER_TOO_SMALL,
     OUT_OF_MEMORY,
+    ALREADY_EXISTS,
     DISK_FULL,
-    END_OF_CHAIN
+    END_OF_CHAIN,
+    NOT_IMPLEMENTED
 };
 
 enum FileAttributes : uint8_t {
