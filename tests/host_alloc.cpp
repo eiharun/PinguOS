@@ -8,17 +8,12 @@ HostAllocator::HostAllocator(){
 }
 
 void* HostAllocator::malloc(size_t size, size_t alignment)  {
-    size = (size == 0 ? 1 : size);
-    auto ptr = std::make_unique<uint8_t[]>(size);
-    void* raw_ptr = ptr.get();
-    allocations[raw_ptr] = std::move(ptr);
-    return raw_ptr;
-    // return std::malloc(size == 0 ? 1 : size);
+    
+    return std::malloc(size == 0 ? 1 : size);
 }
 
 void HostAllocator::free(void* ptr) {
-    allocations.erase(ptr);
-    // std::free(ptr);
+    std::free(ptr);
 }
 
 // void* operator new(size_t size){
