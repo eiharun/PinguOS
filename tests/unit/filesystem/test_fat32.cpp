@@ -98,7 +98,7 @@ struct DiskSetup{
         uint32_t* fat = (uint32_t*)&disk.m_data[fat_sector * disk.SECTOR_SIZE];
 
         // Mark cluster 2 as end-of-chain = root cluster
-        fat[2 * 4] = 0x0FFFFFFF;
+        fat[2] = 0x0FFFFFFF;
 
         // -------------------------------------------------------
         // Build root directory at cluster 2
@@ -122,6 +122,7 @@ struct DiskSetup{
         // starting cluster = 3
         f1.first_cluster_hi = 0x0000;
         f1.first_cluster_lo = 0x0003;
+        fat[3] = 0x0FFFFFFF;
         f1.size = std::strlen(file_data);
         DirectoryEntryFat32 end;
         end.name[0] = 0x00; // end-of-directory entry
@@ -165,8 +166,8 @@ struct DiskSetup{
         // Media descriptor
         bpb.media_type = 0xF8;
 
-        // FAT32 FAT size = 1 sector
-        bpb.table_size = 1;
+        // FAT32 FAT size = 16 sector
+        bpb.table_size = 16;
         bpb.fat_sector_count = (uint16_t)(bpb.table_size);
 
         // Root cluster = 2
@@ -180,19 +181,64 @@ struct DiskSetup{
 
 };
 
+#define GA_PARTITION_OFFSET 0
 class FAT32_GA: public testing::Test {
 protected:
     FAT32_GA() = default;
     static void SetUpTestSuite() {
         std::cout << "Initializing Mock ATA Disk\n";
         disk = std::make_unique<MockATA>(DiskSetup::make_disk(1024));
-        fs = std::make_unique<FAT32>(disk.get(), 0);
+        bpb = DiskSetup::build_bpb(1024, disk->SECTOR_SIZE);
+        fs = std::make_unique<FAT32>(disk.get(), GA_PARTITION_OFFSET);
         ASSERT_EQ(fs->mount(), FSError::SUCCESS);
     };
+    static uint32_t get_next_cluster(uint32_t cluster){
+        uint32_t fat_start = GA_PARTITION_OFFSET+bpb.reserved_sectors;
+        uint32_t fat_sector = cluster / (bpb.bytes_per_sector / 4);
+        uint32_t fat_offset = cluster % (bpb.bytes_per_sector / 4);
+        uint8_t sector_buf[MOCK_SECTOR_SIZE]{};
+        disk->read_28(fat_start+fat_sector, sector_buf, bpb.bytes_per_sector);
+        return ((uint32_t*)sector_buf)[fat_offset] & 0x0FFFFFFF;
+    };
+    static size_t num_clusters(uint32_t start_cluster, std::vector<uint32_t>* clusters = nullptr){
+        size_t count{};
+        uint32_t cluster = start_cluster;
+        uint32_t fat_start = GA_PARTITION_OFFSET+bpb.reserved_sectors;
+        while((cluster < 0x0FFFF8) && (cluster != 0)){
+            uint32_t fat_sector = cluster / (bpb.bytes_per_sector / 4);
+            uint32_t fat_offset = cluster % (bpb.bytes_per_sector / 4);
+            uint8_t sector_buf[MOCK_SECTOR_SIZE]{};
+            disk->read_28(fat_start+fat_sector, sector_buf, bpb.bytes_per_sector);
+            cluster = ((uint32_t*)sector_buf)[fat_offset] & 0x0FFFFFFF;
+            if(cluster !=0 ){
+                count ++;
+                if(clusters) clusters->push_back(cluster);
+            }
+        }
+        return count;
+    };
+    static bool check_fat_integrity(FileHandle& handle){
+        // Checks FAT chain to ensure every chain has a EOC and no NULL
+        uint32_t cluster = handle.start_cluster;
+        uint32_t fat_start = GA_PARTITION_OFFSET+bpb.reserved_sectors;
+        while((cluster < 0x0FFFF8)){
+            uint32_t fat_sector = cluster / (bpb.bytes_per_sector / 4);
+            uint32_t fat_offset = cluster % (bpb.bytes_per_sector / 4);
+            uint8_t sector_buf[MOCK_SECTOR_SIZE]{};
+            disk->read_28(fat_start+fat_sector, sector_buf, bpb.bytes_per_sector);
+            cluster = ((uint32_t*)sector_buf)[fat_offset] & 0x0FFFFFFF;
+            if(cluster == 0 ){
+                return false;
+            }
+        }
+        return true;
+    };
 
+    static BiosParameterBlock32 bpb;
     static std::unique_ptr<MockATA> disk;
     static std::unique_ptr<FAT32> fs;
 };
+BiosParameterBlock32 FAT32_GA::bpb;
 std::unique_ptr<MockATA> FAT32_GA::disk;
 std::unique_ptr<FAT32> FAT32_GA::fs;
 
@@ -234,7 +280,6 @@ TEST_F(FAT32_GA, OpenRootPrintAndClose)
 TEST_F(FAT32_GA, TestMakeFile){
     // make_file must be successful
     ASSERT_SUCCESS(fs->make_file("/", "NEW_FILE.TXT"));
-    // ASSERT_EQ(fs->make_file("/", "NEW_FILE.TXT"), FSError::SUCCESS);
     DirectoryIterator* it = nullptr;
     ASSERT_EQ(fs->open_directory("/", it), FSError::SUCCESS);
     ASSERT_NE(it, nullptr);
@@ -290,7 +335,6 @@ TEST_F(FAT32_GA, TestMakeFileDuplicateFile){
     ASSERT_EQ(fs->make_file("/", "FILE.TXT"), FSError::ALREADY_EXISTS);
 }
 
-
 TEST_F(FAT32_GA, TestOpenAndReadFile){
     FileHandle handle;
     ASSERT_SUCCESS(fs->open("/FILE.TXT", handle));
@@ -301,6 +345,13 @@ TEST_F(FAT32_GA, TestOpenAndReadFile){
     ASSERT_SUCCESS(fs->read(handle,buf, handle.size, bytes_read));
     printf((char*)buf);
     EXPECT_EQ(bytes_read, 51);
+}
+
+TEST_F(FAT32_GA, TestReadInvalidFile){
+    FileHandle handle;
+    uint8_t buf[256]{};
+    uint32_t bytes_read{};
+    ASSERT_FAIL(fs->read(handle,buf, handle.size, bytes_read));
 }
 
 TEST_F(FAT32_GA, TestWriteLongFile){
@@ -332,15 +383,94 @@ TEST_F(FAT32_GA, TestWriteLongFile){
     for(int i=0; i<BUF_SIZE-100; ++i){
         EXPECT_EQ(read_buf[i], buf[i]);
     }
-
+    fs->close(handle);
+    EXPECT_FALSE(handle.valid);
 }
 
 TEST_F(FAT32_GA, TestSeek){
     // Verify file contents 
+    FileHandle handle;
+    ASSERT_SUCCESS(fs->open("/LONGFILE.TXT", handle));
+    EXPECT_TRUE(handle.valid);
+    handle.position = 0;
+    handle.cluster = handle.start_cluster;
+    // Contents should be 32 -> 158 ascii
+    // Read first 126 bytes
+    const size_t BUF_SIZE = 1024;
+    uint8_t read_buf[BUF_SIZE]{};
+    uint32_t bytes_read{};
+    ASSERT_SUCCESS(fs->read(handle, read_buf, 126, bytes_read));
+    EXPECT_EQ(bytes_read, 126);
+    EXPECT_EQ(std::strlen((char*)read_buf), 126);
+    printf("+0:\t");
+    printf((char*)read_buf);
+    printf("\n");
+    for(int i=0; i<bytes_read; ++i){
+        EXPECT_EQ(read_buf[i], (i % 126) + 32);
+    }
+    // Start small +3
+    ASSERT_SUCCESS(fs->seek(handle, 3));
+    EXPECT_EQ(handle.position, 3);
+    EXPECT_EQ(handle.cluster, handle.start_cluster);
+    std::memset(read_buf, 0, BUF_SIZE);
+    ASSERT_SUCCESS(fs->read(handle, read_buf, 126, bytes_read));
+    EXPECT_EQ(bytes_read, 126);
+    printf("+3:\t");
+    printf((char*)read_buf);
+    printf("\n");
+    for(int i=0; i<bytes_read; ++i){
+        EXPECT_EQ(read_buf[i], ((i+3) % 126) + 32);
+    }
+    // Cross over into next cluster
+    constexpr int seek_pos_1 = (126*5) + 50;
+    ASSERT_SUCCESS(fs->seek(handle, seek_pos_1));
+    std::memset(read_buf, 0, BUF_SIZE);
+    ASSERT_SUCCESS(fs->read(handle, read_buf, 126, bytes_read));
+    EXPECT_EQ(bytes_read, 126);
+    printf("+%d:\t",seek_pos_1);
+    printf((char*)read_buf);
+    printf("\n");
+    for(int i=0; i<bytes_read; ++i){
+        EXPECT_EQ(read_buf[i], ((i+seek_pos_1) % 126) + 32);
+    }
+    fs->close(handle);
+}
+
+TEST_F(FAT32_GA, TestWriteLongFileOverWriteShort){
+    // Test to make sure cluster was freed; get_next_cluster() = 0
+    FileHandle handle;
+    ASSERT_SUCCESS(fs->open("/LONGFILE.TXT", handle));
+    std::vector<uint32_t> clusters;
+    size_t cluster_count_before = num_clusters(handle.start_cluster, &clusters);
+    EXPECT_TRUE(handle.valid);
+
+    const int BUF_SIZE = 13;
+    uint8_t buf[BUF_SIZE] {"Hello World\n"};
+    ASSERT_SUCCESS(fs->write(handle, buf, BUF_SIZE, filesystem::Filesystem::WRITE));
+    size_t cluster_count_after = num_clusters(handle.start_cluster);
+    EXPECT_EQ(cluster_count_after, 1);
+    EXPECT_TRUE(check_fat_integrity(handle));
+    EXPECT_LT(cluster_count_after, cluster_count_before);
+    int cluster_diff = cluster_count_before - cluster_count_after;
+    // Last 2 clusters should be 0
+    for(int i=1; i<cluster_diff; ++i){
+        EXPECT_EQ(get_next_cluster(clusters[i]), 0);
+    }
+    
+    uint8_t read_buf[BUF_SIZE]{};
+    uint32_t bytes_read{};
+    ASSERT_SUCCESS(fs->read(handle, read_buf, BUF_SIZE, bytes_read));
+    printf((char*)read_buf);
+    ASSERT_EQ(bytes_read, BUF_SIZE);
+    for(int i=0; i<BUF_SIZE; ++i){
+        EXPECT_EQ(buf[i], read_buf[i]);
+    }
+
+    fs->close(handle);
 }
 
 TEST_F(FAT32_GA, TestWriteAppendToLongFileEnd){
-    GTEST_SKIP();
+    GTEST_SKIP(); 
 }
 
 TEST_F(FAT32_GA, TestWriteAppendToLongFileMiddle){

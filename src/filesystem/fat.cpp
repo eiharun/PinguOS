@@ -2,7 +2,6 @@
 #include <filesystem/fat.h>
 #include <allocator.h>
 #include <common/path_utils.hpp>
-#include <system_error>
 
 using namespace filesystem;
 
@@ -10,6 +9,23 @@ using namespace filesystem;
 // void printf_hex(uint8_t);
 // void printf_hex16(uint16_t);
 // void printf_hex32(uint32_t);
+
+void copy_dir_entry(DirectoryEntryFat32* dst, DirectoryEntryFat32& src){
+    for(int i=0; i<NAME_SIZE_8_3; ++i){
+        dst->name[i] = src.name[i];
+    }
+    dst->attributes = src.attributes;
+    dst->reserved = src.reserved;
+    dst->c_tenth_time = src.c_tenth_time;
+    dst->c_time = src.c_time;
+    dst->c_date = src.c_date;
+    dst->a_time = src.a_time;
+    dst->first_cluster_hi = src.first_cluster_hi;
+    dst->w_time = src.w_time;
+    dst->w_date = src.w_date;
+    dst->first_cluster_lo = src.first_cluster_lo;
+    dst->size = src.size;
+}
 
 //========---FAT32DirectoryIterator START---========
 
@@ -219,19 +235,21 @@ FSError FAT32::open(const char* path, FileHandle& handle){
 
 FSError FAT32::write(FileHandle& handle, uint8_t* buffer, size_t size, WRITE_MODE mode){
     if(!handle.valid) return FSError::INVALID_PATH;
-    
-
+    const size_t bytes_per_cluster = m_bpb.sectors_per_cluster*m_bpb.bytes_per_sector;
+    uint32_t entry_cluster{};
+    uint32_t entry_index{};
+    DirectoryEntryFat32 entry{};
+    find_directory_entry(handle, entry_cluster, entry_index, entry);
+    if(entry.name[0] == 0x00){
+        // Not found
+        return FSError::NOT_FOUND;
+    }
     switch(mode){
     case WRITE_MODE::APPEND:{
-        // Shift *size* number of bytes *size* bytes at handle.position in cluster and following clusters
-        // update handle.size
-        return FSError::NOT_IMPLEMENTED;
-    } break;
-    case WRITE_MODE::WRITE:{
-        // Overwrite at handle.position, update handle.size if needed
-        const size_t bytes_per_cluster = m_bpb.sectors_per_cluster*m_bpb.bytes_per_sector;
-        uint32_t space_left_in_cluster = bytes_per_cluster - (handle.position % bytes_per_cluster) ;
-        uint32_t clusterchain_index = handle.position / bytes_per_cluster;
+        // Append to the end of the file = handle.size. 
+        // Get DirectoryEntry
+        size_t end_pos = handle.size;
+        uint32_t space_left_in_cluster = bytes_per_cluster - (end_pos % bytes_per_cluster) ;
         bool new_cluster{false};
         if(space_left_in_cluster < size){
             // allocate and link new cluster
@@ -240,11 +258,10 @@ FSError FAT32::write(FileHandle& handle, uint8_t* buffer, size_t size, WRITE_MOD
         // Write "space_left_in_cluster" or "size" bytes to current cluster at position
         uint32_t bytes_written{};
         size_t bytes_to_write = (space_left_in_cluster < size) ? space_left_in_cluster : size;
-        FSError err = write_cluster(handle.cluster, buffer, handle.position, bytes_to_write);
+        FSError err = write_cluster(handle.cluster, buffer, (end_pos % bytes_per_cluster), bytes_to_write);
         if(err != FSError::SUCCESS){
             return err;
         }
-        handle.position += bytes_to_write;
         bytes_written += bytes_to_write;
         size -= bytes_to_write;
         handle.size += bytes_to_write; 
@@ -263,13 +280,105 @@ FSError FAT32::write(FileHandle& handle, uint8_t* buffer, size_t size, WRITE_MOD
                 if(err != FSError::SUCCESS){
                     return err;
                 }
-                handle.position += bytes_to_write;
                 bytes_written += bytes_to_write;
                 size -= bytes_to_write;
                 handle.size += bytes_to_write; 
                 // if new cluster gets full, loop back again and allocate new cluster and repeat 
             }
         }       
+
+        // Update size in DirectoryEntry
+        entry.size = handle.size;
+        // Write back dir entry
+        uint32_t entry_offset = entry_index * sizeof(DirectoryEntryFat32);
+        write_cluster(entry_cluster, (uint8_t*)&entry, entry_offset, sizeof(DirectoryEntryFat32));
+
+    } break;
+    case WRITE_MODE::WRITE:{
+        // Calculate how many clusters are needed to complete write, then allocate or deallocate in FAT accordingly
+        uint32_t num_cluster_needed = (size / bytes_per_cluster) + 1;
+        uint32_t num_clusters{0};
+        uint32_t curr_cluster = handle.start_cluster;
+        uint32_t last_needed_cluster{};
+        uint32_t last_valid_cluster{};
+        while(!IS_END_OF_CHAIN(curr_cluster)){
+            num_clusters++;
+            if(num_clusters == num_cluster_needed){
+                last_needed_cluster = curr_cluster;
+            }
+            if(!IS_END_OF_CHAIN(curr_cluster)){
+                last_valid_cluster = curr_cluster;
+            }
+            curr_cluster = get_next_cluster(curr_cluster);
+        }
+        if(num_clusters > num_cluster_needed){
+            // Delete clusters
+            uint32_t last_unneeded_cluster = get_next_cluster(last_needed_cluster);
+            unlink_cluster(last_needed_cluster, last_unneeded_cluster);
+            uint32_t del_cluster = last_unneeded_cluster;
+            uint32_t next_cluster{};
+            while(!IS_END_OF_CHAIN(del_cluster)){
+                next_cluster = get_next_cluster(del_cluster);
+                deallocate_cluster(del_cluster);
+                del_cluster = next_cluster;
+            }
+            // dealloc last EOC cluster
+            // deallocate_cluster(del_cluster);
+        }
+        if(num_clusters < num_cluster_needed){
+            // Allocate more clusters
+            curr_cluster = last_valid_cluster;
+            uint32_t num_to_alloc = num_cluster_needed - num_clusters;
+            for(int i=0; i<num_to_alloc; ++i){
+                uint32_t new_cluster = allocate_cluster();
+                if(new_cluster == 0){
+                    return FSError::DISK_FULL;
+                }
+                link_next_cluster(curr_cluster, new_cluster);
+                curr_cluster = new_cluster;
+            }
+        }
+        // If num_clusters == num_cluster_needed, do nothing
+        uint32_t bytes_to_write{};
+        uint32_t bytes_written{};
+        curr_cluster = handle.start_cluster;
+        while(size > 0){
+            if(IS_END_OF_CHAIN(curr_cluster)){
+                uint32_t new_cluster = allocate_cluster();
+                link_next_cluster(curr_cluster, new_cluster);
+                curr_cluster = new_cluster;
+            }
+            bytes_to_write = (bytes_per_cluster < size) ? bytes_per_cluster : size;
+            FSError err = write_cluster(curr_cluster, buffer+bytes_written, 0, bytes_to_write);
+            if(err != FSError::SUCCESS){
+                return err;
+            }
+            bytes_written += bytes_to_write;
+            size -= bytes_to_write;
+            handle.size += bytes_to_write; 
+            curr_cluster = get_next_cluster(curr_cluster);
+        }
+        handle.cluster = handle.start_cluster;
+        handle.position = 0;
+        // Update size in DirectoryEntry
+        entry.size = handle.size;
+        // Write back dir entry
+        uint32_t entry_offset = entry_index * sizeof(DirectoryEntryFat32);
+        write_cluster(entry_cluster, (uint8_t*)&entry, entry_offset, sizeof(DirectoryEntryFat32));
+
+        return FSError::SUCCESS;
+    } break;
+    case WRITE_MODE::INSERT:{
+        // Shift *size* number of bytes *size* bytes at handle.position in cluster and following clusters
+        // update handle.size
+        
+
+        // Update size in DirectoryEntry
+        entry.size = handle.size;
+        // Write back dir entry
+        uint32_t entry_offset = entry_index * sizeof(DirectoryEntryFat32);
+        write_cluster(entry_cluster, (uint8_t*)&entry, entry_offset, sizeof(DirectoryEntryFat32));
+        return FSError::NOT_IMPLEMENTED;
     } break;
     }
 
@@ -348,7 +457,6 @@ void FAT32::close(FileHandle& handle){
 
 
 FSError FAT32::make_file(const char* path, const char* filename){
-    // TODO: Disallow duplicate files in same dir
     FileEntry exist_entry;
     char full_path[MAX_PATH_LEN]{};
     // Combine path and filename
@@ -405,7 +513,13 @@ FSError FAT32::delete_file(FileHandle& handle){
 }
 
 FSError FAT32::make_directory(const char* path, const char* dirname){
-    // TODO: Disallow duplicate dirs in same dir
+    FileEntry exist_entry;
+    char full_path[MAX_PATH_LEN]{};
+    // Combine path and filename
+    PathUtils::merge_path(path, dirname, full_path);
+    if(stat(full_path, exist_entry) == FSError::SUCCESS){
+        return FSError::ALREADY_EXISTS;
+    }
     // Get parent cluster
     FileEntry entry;
     uint32_t parent_cluster;
@@ -601,21 +715,47 @@ FSError FAT32::read_cluster(uint32_t cluster, uint8_t* buffer, uint32_t offset, 
     if(size > m_bpb.sectors_per_cluster*m_bpb.bytes_per_sector){
         size = m_bpb.sectors_per_cluster*m_bpb.bytes_per_sector;
     }
-
-    while(size > 0){
-        uint32_t num_bytes = m_bpb.bytes_per_sector - sector_offset;
-        if(num_bytes > size){
-            num_bytes = size;
+    uint8_t* temp = 0;
+    if(sector_offset != 0){
+        temp = (uint8_t*)memory_management::Allocator::active_memory_manager->malloc(m_bpb.bytes_per_sector);
+        if(temp == 0){
+            return FSError::OUT_OF_MEMORY;
         }
-
-        m_disk->read_28(start_sector, buffer + bytes_read, num_bytes);
-
-        bytes_read += num_bytes;
-        size -= num_bytes;
+        m_disk->read_28(start_sector, temp, m_bpb.bytes_per_sector);
+        uint32_t bytes_to_read = m_bpb.bytes_per_sector-sector_offset;
+        if (bytes_to_read > size) bytes_to_read = size;
+        for(int i=0; i<bytes_to_read; ++i){
+            buffer[i] = temp[i+sector_offset];
+        }
+        bytes_read += bytes_to_read;
+        size -= bytes_to_read;
         start_sector++;
         sector_offset = 0;
     }
 
+    while(size >= m_bpb.bytes_per_sector){
+        m_disk->read_28(start_sector, buffer + bytes_read,  m_bpb.bytes_per_sector);
+        bytes_read +=  m_bpb.bytes_per_sector;
+        size -=  m_bpb.bytes_per_sector;
+        start_sector++;
+    }
+    if(size > 0){
+        if(temp == 0){
+            temp = (uint8_t*)memory_management::Allocator::active_memory_manager->malloc(m_bpb.bytes_per_sector);
+            if(temp == 0){
+                return FSError::OUT_OF_MEMORY;
+            }
+        }
+        m_disk->read_28(start_sector, temp, size);
+        for(int i=0; i<size; ++i){
+            buffer[bytes_read+i] = temp[i];
+        }
+        size = 0;
+    }
+
+    if(temp != 0){
+        memory_management::Allocator::active_memory_manager->free(temp);
+    }
     return FSError::SUCCESS;
 }
 
@@ -680,6 +820,14 @@ void FAT32::link_next_cluster(uint32_t current_cluster, uint32_t next_cluster){
     // zero_cluster(next_cluster); //FIXME: Is this necesarry?
 }
 
+void FAT32::unlink_cluster(uint32_t prev_cluster, uint32_t current_cluster){
+    uint32_t fat_sector = prev_cluster / (m_bpb.bytes_per_sector / 4);
+    uint32_t fat_offset = prev_cluster % (m_bpb.bytes_per_sector / 4);
+    m_disk->read_28(m_fat_start + fat_sector, m_sector_buf, m_bpb.bytes_per_sector);
+    ((uint32_t*)m_sector_buf)[fat_offset] = 0x0FFFFF;
+    m_disk->write_28(m_fat_start + fat_sector, m_sector_buf, m_bpb.bytes_per_sector);
+}
+
 FSError FAT32::zero_cluster(uint32_t cluster){
     uint8_t zero[1] {0};
     for(int i=0; i<m_bpb.sectors_per_cluster; ++i){
@@ -690,9 +838,11 @@ FSError FAT32::zero_cluster(uint32_t cluster){
 }
 
 uint32_t FAT32::allocate_cluster(){
-    uint32_t cluster{};
     const size_t NUM_ENTRIES = m_bpb.table_size*(m_bpb.bytes_per_sector/4);
     uint8_t* sector = (uint8_t*)memory_management::Allocator::active_memory_manager->malloc(m_bpb.bytes_per_sector);
+    if(sector == 0){
+        return 0;
+    }
     for(uint32_t cluster = 2; cluster<=NUM_ENTRIES; ++cluster){
         uint32_t fat_sector = cluster / (m_bpb.bytes_per_sector/4);
         uint32_t fat_offset = cluster % (m_bpb.bytes_per_sector/4);
@@ -706,6 +856,22 @@ uint32_t FAT32::allocate_cluster(){
     }    
     memory_management::Allocator::active_memory_manager->free(sector);
     return 0;
+}
+
+FSError FAT32::deallocate_cluster(uint32_t del_cluster){
+    const size_t NUM_ENTRIES = m_bpb.table_size*(m_bpb.bytes_per_sector/4);
+    uint8_t* sector = (uint8_t*)memory_management::Allocator::active_memory_manager->malloc(m_bpb.bytes_per_sector);
+    if(sector == 0){
+        return FSError::OUT_OF_MEMORY;
+    }
+    uint32_t fat_sector = del_cluster / (m_bpb.bytes_per_sector/4);
+    uint32_t fat_offset = del_cluster % (m_bpb.bytes_per_sector/4);
+    m_disk->read_28(m_fat_start+fat_sector, sector, m_bpb.bytes_per_sector);
+    uint32_t* entries = (uint32_t*)sector;
+    entries[fat_offset] = 0;
+    m_disk->write_28(m_fat_start+fat_sector, (uint8_t*)entries, m_bpb.bytes_per_sector);
+    memory_management::Allocator::active_memory_manager->free(sector);
+    return FSError::SUCCESS;
 }
 
 FSError FAT32::create_directory_entry(FileEntry& new_entry){
@@ -803,5 +969,38 @@ FSError FAT32::create_directory_entry(FileEntry& new_entry){
     memory_management::Allocator::active_memory_manager->free(cluster_buf);
     return err;
 }
+
+FSError FAT32::find_directory_entry(const FileHandle& handle, uint32_t& cluster, uint32_t& entry_index, DirectoryEntryFat32& entry){
+    entry.name[0] = 0x00; // Ensure given dir entry is empty
+    const size_t CLUSTER_SIZE = m_bpb.sectors_per_cluster*m_bpb.bytes_per_sector;
+    uint8_t* cluster_buf = (uint8_t*)memory_management::Allocator::active_memory_manager->malloc(CLUSTER_SIZE);
+    if(cluster_buf == 0){
+        return FSError::OUT_OF_MEMORY;
+    }
+    uint32_t curr_cluster = handle.parent_cluster;
+    bool found{false};
+    while(!found){
+        read_cluster(curr_cluster, cluster_buf, 0, CLUSTER_SIZE);
+        DirectoryEntryFat32* entries = (DirectoryEntryFat32*)cluster_buf;
+        const int NUM_ENTRIES = CLUSTER_SIZE / sizeof(DirectoryEntryFat32);
+        for(int i=0; i<NUM_ENTRIES; ++i){
+            uint32_t entry_cluster = ((uint32_t)entries[i].first_cluster_hi << 16) | entries[i].first_cluster_lo;
+            if(entry_cluster == handle.start_cluster){
+                found = true;
+                cluster = curr_cluster;
+                copy_dir_entry(&entry, entries[i]);
+                // entry = &entries[i];
+                entry_index = i;
+                break;
+            }
+        }
+        if(!found){
+            curr_cluster = get_next_cluster(curr_cluster);
+        }
+    }
+    memory_management::Allocator::active_memory_manager->free(cluster_buf);
+    return FSError::SUCCESS;
+}
+
 
 //========---FAT32 END-----========

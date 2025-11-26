@@ -88,7 +88,7 @@ public:
     static bool detect(uint8_t* boot_sector) { return false; }
     bool is_mounted() const { return m_mounted; }
     
-    enum WRITE_MODE{WRITE=0, APPEND};
+    enum WRITE_MODE{WRITE=0, APPEND, INSERT};
 
     virtual FSError open(const char* path, FileHandle& handle) = 0;
     virtual FSError write(FileHandle& handle, uint8_t* buffer, size_t size, WRITE_MODE mode) = 0;

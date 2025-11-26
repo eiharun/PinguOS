@@ -191,7 +191,7 @@ extern "C" void pingu_kernel_main(const void* multiboot_struct, uint32_t magic_n
     printf("\nATA Primary Slave Identify: ");
     // ata0s.identify();
     printf("\n\n");
-    filesystem::MSDOSPartitionTable::read_partitions(&ata0s);
+    // filesystem::MSDOSPartitionTable::read_partitions(&ata0s);
     
     
     // int 15

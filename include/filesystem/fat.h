@@ -41,7 +41,7 @@ struct BiosParameterBlock32{
 
 #define ENTRY_END 0x00
 #define ENTRY_DELETED 0xE5
-#define IS_END_OF_CHAIN(cluster) cluster>=0x0FFFF8
+#define IS_END_OF_CHAIN(cluster) (cluster>=0x0FFFF8)
 #define NAME_SIZE_8_3 11
 
 struct DirectoryEntryFat32{
@@ -58,6 +58,7 @@ struct DirectoryEntryFat32{
     uint16_t first_cluster_lo;
     uint32_t size;
 }__attribute__((packed));
+
 
 struct LongFileName32{
     uint8_t order;
@@ -123,11 +124,14 @@ public:
 private:
     uint32_t get_next_cluster(uint32_t cluster);
     void link_next_cluster(uint32_t current_cluster, uint32_t next_cluster);
+    void unlink_cluster(uint32_t prev_cluster, uint32_t current_cluster);
     FSError read_cluster(uint32_t cluster, uint8_t* buffer, uint32_t offset, uint32_t size);
     FSError write_cluster(uint32_t cluster, uint8_t* buffer, uint32_t offset, uint32_t size);
     FSError zero_cluster(uint32_t cluster);
     uint32_t allocate_cluster();
+    FSError deallocate_cluster(uint32_t del_cluster);
     FSError create_directory_entry(FileEntry& new_entry);
+    FSError find_directory_entry(const FileHandle& handle, uint32_t& cluster, uint32_t& entry_index, DirectoryEntryFat32& entry);
 
     drivers::Disk* m_disk;
     BiosParameterBlock32 m_bpb;

@@ -5,10 +5,11 @@
 // #include <cstdint>
 #include <cstring>
 
+#define MOCK_SECTOR_SIZE 512
 
 class MockATA: public drivers::Disk{
 public:
-    static const size_t SECTOR_SIZE = 512;
+    static const size_t SECTOR_SIZE = MOCK_SECTOR_SIZE;
     size_t m_sector_count;
     size_t DISK_SIZE = SECTOR_SIZE * m_sector_count;
     std::vector<uint8_t> m_data;
