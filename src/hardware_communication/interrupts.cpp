@@ -59,9 +59,10 @@ InterruptManager::InterruptManager(GlobalDescriptorTable* gdt, multitasking::Tas
 
     set_interrupt_descriptor_table_entry(0x20, code_segment, &handleInterruptRequest0x00, 0, IDT_INTERRUPT_GATE);
     set_interrupt_descriptor_table_entry(0x21, code_segment, &handleInterruptRequest0x01, 0, IDT_INTERRUPT_GATE);
+    set_interrupt_descriptor_table_entry(0x2B, code_segment, &handleInterruptRequest0x0B, 0, IDT_INTERRUPT_GATE);
     set_interrupt_descriptor_table_entry(0x2C, code_segment, &handleInterruptRequest0x0C, 0, IDT_INTERRUPT_GATE);
     
-    set_interrupt_descriptor_table_entry(0x2B, code_segment, &handleInterruptRequest0x0B, 0, IDT_INTERRUPT_GATE);
+    set_interrupt_descriptor_table_entry(0x2E, code_segment, &handleInterruptRequest0x0E, 0, IDT_INTERRUPT_GATE);
     
     set_interrupt_descriptor_table_entry(0x80, code_segment, &handleInterruptRequest0x80, 0, IDT_INTERRUPT_GATE);
     

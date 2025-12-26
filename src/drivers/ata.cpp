@@ -1,11 +1,14 @@
+#include "common/types.h"
 #include "drivers/disk.h"
+#include "hardware_communication/interrupts.h"
 #include <drivers/ata.h>
 
 using namespace drivers;
 void printf(char*);
 
-ATA::ATA(uint16_t port_base, bool master)
-: m_bytes_per_sector(512), m_master(master),
+ATA::ATA(InterruptManager* interrupt_manager,uint16_t port_base, bool master)
+: InterruptHandler(ATA_INT, interrupt_manager),
+m_bytes_per_sector(512), m_master(master),
 m_data_port(port_base),
 m_err_port(port_base + 1),
 m_sector_count_port(port_base + 2),
@@ -14,11 +17,16 @@ m_lba_mid_port(port_base + 4),
 m_lba_hi_port(port_base + 5),
 m_drive_head_port(port_base + 6),
 m_command_port(port_base + 7),
-m_control_port(port_base + 0x206)
+m_control_port(port_base == 0x1F0 ? 0x3F6 : 0x376)
+// m_control_port(port_base + 0x206)
 {
 }
 
 ATA::~ATA(){}
+
+uint32_t ATA::handle_interrupt(uint32_t esp){
+    return esp;
+}
 
 DiskErr ATA::identify(){
     /*
@@ -129,6 +137,8 @@ DiskErr ATA::read_28(uint32_t sector, uint8_t* data, size_t count){
     for(uint16_t i=count + (count % 2); i<m_bytes_per_sector; i+=2){
         m_data_port.read();
     }
+    Port8_Slow(0xA0).write(0x20); // Slave PIC EOI
+    Port8_Slow(0x20).write(0x20); // Master PIC EOI
     return DiskErr::SUCCESS;
 }
 
@@ -162,6 +172,7 @@ DiskErr ATA::write_28(uint32_t sector, uint8_t* data, size_t count){
         m_data_port.write(0x0000);
     }
     printf(" Written to ATA ");
+    m_control_port.write(0x00);
     return DiskErr::SUCCESS;
 }
 
@@ -178,4 +189,9 @@ DiskErr ATA::flush(){
         return DiskErr::OTHER;
     }
     return DiskErr::SUCCESS;
+}
+
+DiskErr ATA::reset(){
+    m_drive_head_port.write(m_master ? 0xE0 : 0xF0);
+    m_control_port.write(0x00);
 }
