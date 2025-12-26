@@ -82,7 +82,7 @@ public:
     static void handleInterruptRequest0x0B();
     static void handleInterruptRequest0x0C(); // Mouse
     static void handleInterruptRequest0x0D();
-    static void handleInterruptRequest0x0E();
+    static void handleInterruptRequest0x0E(); // ATA
     static void handleInterruptRequest0x0F();
     static void handleInterruptRequest0x31();
 

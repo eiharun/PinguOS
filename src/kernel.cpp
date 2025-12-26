@@ -184,21 +184,23 @@ extern "C" void pingu_kernel_main(const void* multiboot_struct, uint32_t magic_n
     printf("\n\n\n\n\n\n");
 
     // int 14
-    ATA ata0m(0x1F0, true);
-    printf("ATA Primary Master Identify: ");
+    ATA ata0m(&interrupts,0x1F0, true);
+    // printf("ATA Primary Master Identify: ");
     // ata0m.identify();
-    ATA ata0s(0x1F0, false);
-    printf("\nATA Primary Slave Identify: ");
+    ATA ata0s(&interrupts,0x1F0, false);
+    // printf("\nATA Primary Slave Identify: ");
     // ata0s.identify();
     printf("\n\n");
-    // filesystem::MSDOSPartitionTable::read_partitions(&ata0s);
     
     
     // int 15
     // ATA ata1m(0x170, true);
     // ATA ata1s(0x170, false);
-
     interrupts.activate();
+
+    
+    filesystem::MSDOSPartitionTable::read_partitions(&ata0s);
+
     // uint8_t data[5] = {'A', 'B', 'C', 'D', 'E'};
     // Intel_82540EM* eth0 = (Intel_82540EM*)(driver_manager.m_drivers[2]);
     // eth0->send_packet(data, 5);

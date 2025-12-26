@@ -62,7 +62,8 @@ void MSDOSPartitionTable::read_partitions(ATA* hd){
         printf("0x");
         printf_hex(bytes_read);
         printf(" bytes read\n     ");
-        buf[bytes_read+1] = '\0';
+        if (bytes_read < sizeof(buf)) buf[bytes_read] = '\0';
+        else buf[sizeof(buf)-1] = '\0';
         printf((char*)buf);
         printf("\n");
     }
